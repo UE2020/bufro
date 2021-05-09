@@ -1,7 +1,13 @@
 [package]
 name = "bufro"
+description = "2D vector graphics with C++ and Rust API"
 version = "0.1.0"
-authors = ["Aspect <ttmmiizz100@gmail.com>"]
+license = "GPL"
+readme = "README.md"
+authors = ["Aspect"]
+keywords = ["graphics", "canvas", "vector", "drawing", "gpu", "opengl"]
+categories = ["graphics"]
+repository = "https://github.com/UE2020/bufro"
 edition = "2018"
 
 [lib]
@@ -11,6 +17,11 @@ crate-type = ["cdylib"]
 
 [dependencies]
 glow = "*"
-glutin = "*"
 cgmath = "*"
 libc = "*"
+glutin = "*"
+
+[dev-dependencies]
+env_logger = "0.5"
+glutin = "*"
+bufro = { version = "0.1.0", git = "https://github.com/UE2020/bufro.git", branch = "main" }

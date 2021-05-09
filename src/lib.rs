@@ -4,6 +4,7 @@ use std::convert::AsRef;
 use std::f32::consts::PI;
 use cgmath::SquareMatrix;
 
+
 /// Represents a color with values from 0-1
 #[repr(C)]
 pub struct Color {
@@ -40,6 +41,14 @@ pub enum Command {
         x: f32,
         y: f32,
         r: f32,
+        color: Color
+    },
+    Rectangle {
+        x: f32,
+        y: f32,
+        width: f32,
+        height: f32,
+        angle: f32,
         color: Color
     }
 }
@@ -112,11 +121,7 @@ impl Renderer {
 
             let mut m_viewport: [i32; 7] = [0; 7];
 
-            gl.get_parameter_i32_slice(glow::VIEWPORT, &mut m_viewport);
-            println!("parameter {:?}", m_viewport);
-            let size = 200.;
-            let aspect = m_viewport[2] as f32 / m_viewport[3] as f32;
-            
+            gl.get_parameter_i32_slice(glow::VIEWPORT, &mut m_viewport);            
 
             Self {
                 gl,
@@ -193,7 +198,7 @@ impl Renderer {
 
                         let vertex_buffer = self.gl.create_buffer().unwrap();
                         self.gl.bind_buffer(glow::ARRAY_BUFFER, Some(vertex_buffer));
-                        self.gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, vertex_buffer_data.as_ref(), glow::DYNAMIC_DRAW);
+                        self.gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, vertex_buffer_data.as_ref(), glow::STREAM_DRAW);
 
                         self.gl.enable_vertex_attrib_array(0);
                         self.gl.vertex_attrib_pointer_f32(0, 3, glow::FLOAT, false, 0, 0);
@@ -215,6 +220,48 @@ impl Renderer {
                         self.gl.delete_vertex_array(vertex_array); // clean up
                         self.gl.delete_buffer(vertex_buffer);
                     },
+                    Command::Rectangle { x, y, width, height, color, angle } => {
+                        let vertex_array = self.gl.create_vertex_array().unwrap();
+                        self.gl.bind_vertex_array(Some(vertex_array));
+
+                        let vertex_buffer_data = [
+                            0., 0., 0.,
+                            width, height, 0.,
+                            0., height, 0.,
+                            //
+                            width, 0., 0.,
+                            width, height, 0.,
+                            0., 0., 0.,
+                        ];
+
+                        let vertex_buffer = self.gl.create_buffer().unwrap();
+                        self.gl.bind_buffer(glow::ARRAY_BUFFER, Some(vertex_buffer));
+                        self.gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, &std::mem::transmute::<[f32; 18], [u8; 72]>(vertex_buffer_data), glow::STREAM_DRAW);
+
+                        self.gl.enable_vertex_attrib_array(0);
+                        self.gl.vertex_attrib_pointer_f32(0, 3, glow::FLOAT, false, 0, 0);
+
+                        let loc = &self.gl.get_uniform_location(self.program, "transform").unwrap();
+
+                        let mut mat = cgmath::Matrix4::identity();
+                        mat.w.x = x;
+                        mat.w.y = y;
+                        mat.x.x = angle.cos();
+                        mat.x.y = -angle.sin();
+                        mat.y.x = angle.sin();
+                        mat.y.y = angle.cos();
+                        let final_mat = self.projection * mat;
+                        let proj: &[f32; 16] = final_mat.as_ref();
+                        self.gl.uniform_matrix_4_f32_slice(Some(loc), false, proj);
+
+                        let loc = &self.gl.get_uniform_location(self.program, "col").unwrap();
+                        self.gl.uniform_3_f32(Some(loc), color.r, color.g, color.b);
+
+                        self.gl.draw_arrays(glow::TRIANGLE_FAN, 0, vertex_buffer_data.len() as i32);
+
+                        self.gl.delete_vertex_array(vertex_array); // clean up
+                        self.gl.delete_buffer(vertex_buffer);
+                    },
                     _ => ()
                 }
             }
@@ -223,6 +270,10 @@ impl Renderer {
 
     pub fn triangle (&mut self, x: f32, y: f32) {
         self.command_stack.push(Command::Triangle { x, y })
+    }
+
+    pub fn rect (&mut self, x: f32, y: f32, width: f32, height: f32, angle: f32, color: Color) {
+        self.command_stack.push(Command::Rectangle { x, y, width, height, color, angle })
     }
 
     pub fn circle (&mut self, x: f32, y: f32, r: f32, color: Color) {
@@ -247,6 +298,12 @@ impl Renderer {
 
     pub fn destroy (self) {
         unsafe { self.gl.delete_program(self.program) }
+    }
+
+    pub fn set_clear_color (&self, color: Color) {
+        unsafe {
+            self.gl.clear_color(color.r, color.g, color.b, color.a);
+        }
     }
 }
 
@@ -280,4 +337,24 @@ pub unsafe extern "C" fn bfr_flush(renderer: *mut Renderer) {
 #[no_mangle]
 pub unsafe extern "C" fn bfr_circle(renderer: *mut Renderer, x: f32, y: f32, r: f32, color: Color) {
     (*renderer).circle(x, y, r, color);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn bfr_color8(r: u8, g: u8, b: u8, a: u8) -> Color {
+    Color::from_8(r, g, b, a)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn bfr_colorf(r: f32, g: f32, b: f32, a: f32) -> Color {
+    Color::from_f(r, g, b, a)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn bfr_set_clear_color(renderer: *mut Renderer, color: Color) {
+    (*renderer).set_clear_color(color);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn bfr_rect(renderer: *mut Renderer, x: f32, y: f32, width: f32, height: f32, angle: f32, color: Color) {
+    (*renderer).rect(x, y, width, height, angle, color);
 }

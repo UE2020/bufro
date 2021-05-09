@@ -1,6 +1,6 @@
 // Just for testing
-
-mod renderer;
+mod lib;
+use lib as bufro;
 
 #[derive(Default)]
 struct Keys {
@@ -27,7 +27,7 @@ fn main() {
                 .unwrap()
                 .make_current()
                 .unwrap();
-            let ctx = renderer::Renderer::new(|s| window.get_proc_address(s) as *const _);
+            let ctx = bufro::Renderer::new(|s| window.get_proc_address(s) as *const _);
             (ctx, window, event_loop)
         };
 
@@ -37,6 +37,7 @@ fn main() {
             let mut keys: Keys = Default::default();
             let mut x = 0.;
             let mut y = 0.;
+            let mut r = 0.;
 
             event_loop.run(move |event, _, control_flow| {
                 *control_flow = ControlFlow::Wait;
@@ -48,6 +49,7 @@ fn main() {
                         window.window().request_redraw();
                     }
                     Event::RedrawRequested(_) => {
+                        r += 0.01;
                         if keys.A {
                             x -= 5.;
                         }
@@ -61,9 +63,12 @@ fn main() {
                             y += 5.;
                         }
 
+                        ctx.rect(300., 300., 100., 100., r, bufro::Color::from_8(122, 125, 132, 255));
                         //ctx.triangle(x, y);
-                        ctx.circle(x, y, 60., renderer::Color::from_8(191, 134, 53, 1));
-                        ctx.circle(x, y, 50., renderer::Color::from_8(255, 179, 71, 1));
+                        //ctx.rect(x, y - 70./2., 125. + 9., 70., 1., bufro::Color::from_8(122, 125, 132, 255));
+                        //ctx.rect(x, y - 50./2., 125., 50., 1., bufro::Color::from_8(163, 167, 176, 255));
+                        ctx.circle(x, y, 60., bufro::Color::from_8(191, 134, 53, 1));
+                        ctx.circle(x, y, 50., bufro::Color::from_8(255, 179, 71, 1));
 
                         ctx.flush();
                         window.swap_buffers().unwrap();

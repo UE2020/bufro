@@ -1,6 +1,7 @@
 #include "../bufro.h"
 #include <GLFW/glfw3.h>
 #include <iostream>
+#include <cmath>
 
 Renderer* surface;
 
@@ -26,6 +27,7 @@ int main()
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
+    glfwWindowHint(GLFW_SAMPLES, 4);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 #ifdef __APPLE__
@@ -45,17 +47,25 @@ int main()
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
 
+
     surface = bfr_create_surface(load_ptrs);
 
     // render loop
     // -----------
+    bfr_set_clear_color(surface, bfr_colorf(0.5, 0.5, 0.5, 0.5));
+    int x = 0;
     while (!glfwWindowShouldClose(window))
     {
         // input
         // -----
         processInput(window);
 
-        bfr_circle(surface, 0, 0, 100, Color { .r = 1, .g = 1, .b = 1, .a = 1 });
+//                        ctx.circle(x, y, 60., bufro::Color::from_8(191, 134, 53, 1));
+//                        ctx.circle(x, y, 50., bufro::Color::from_8(255, 179, 71, 1));
+        bfr_rect(surface, x, 300, 100, 100, bfr_color8(100, 100, 100, 1));
+        bfr_circle(surface, x, 100, 100, bfr_color8(191, 134, 53, 1));
+        bfr_circle(surface, x, 100, 90, bfr_color8(255, 179, 71, 1));
+        x++;
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
