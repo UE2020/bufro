@@ -38,6 +38,7 @@ fn main() {
             let mut x = 0.;
             let mut y = 0.;
             let mut r = 0.;
+            let mut anim: f32 = 0.;
 
             event_loop.run(move |event, _, control_flow| {
                 *control_flow = ControlFlow::Wait;
@@ -49,7 +50,8 @@ fn main() {
                         window.window().request_redraw();
                     }
                     Event::RedrawRequested(_) => {
-                        r += 0.01;
+                        r += 0.1;
+                        anim += 0.01;
                         if keys.A {
                             x -= 5.;
                         }
@@ -63,12 +65,13 @@ fn main() {
                             y += 5.;
                         }
 
-                        ctx.rect(300., 300., 100., 100., r, bufro::Color::from_8(122, 125, 132, 255));
+                        ctx.rect(300. + anim.sin() * 600., 300., 100., 100., r, bufro::Color::from_8(122, 125, 132, 255));
                         //ctx.triangle(x, y);
                         //ctx.rect(x, y - 70./2., 125. + 9., 70., 1., bufro::Color::from_8(122, 125, 132, 255));
                         //ctx.rect(x, y - 50./2., 125., 50., 1., bufro::Color::from_8(163, 167, 176, 255));
-                        ctx.circle(x, y, 60., bufro::Color::from_8(191, 134, 53, 1));
-                        ctx.circle(x, y, 50., bufro::Color::from_8(255, 179, 71, 1));
+                        ctx.circle(300. + anim.sin() * 600., y, 60., bufro::Color::from_8(191, 134, 53, 1));
+                        ctx.circle(300. + anim.sin() * 600., y, 50., bufro::Color::from_8(255, 179, 71, 1));
+
 
                         ctx.flush();
                         window.swap_buffers().unwrap();

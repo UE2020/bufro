@@ -73,12 +73,12 @@ impl Renderer {
             let program = gl.create_program().expect("Cannot create program"); // compile and link shader program
 
             let (vertex_shader_source, fragment_shader_source) = (
-                r#"layout(location = 0) in vec3 vertexPosition_modelspace;
+                r#"layout(location = 0) in vec2 vertexPosition_modelspace;
                 //out vec2 vert;
                 uniform mat4 transform;
 
                 void main() {
-                    gl_Position = transform * vec4(vertexPosition_modelspace, 1.0);
+                    gl_Position = transform * vec4(vertexPosition_modelspace, 0.0, 1.0);
                     //gl_Position.xy += pos;
                     gl_Position.w = 1.0;
                 }"#,
@@ -134,7 +134,7 @@ impl Renderer {
             gl.bind_buffer(glow::ARRAY_BUFFER, Some(vertex_buffer));
 
             gl.enable_vertex_attrib_array(0);
-            gl.vertex_attrib_pointer_f32(0, 3, glow::FLOAT, false, 0, 0);
+            gl.vertex_attrib_pointer_f32(0, 2, glow::FLOAT, false, 0, 0);
 
             Self {
                 gl,
@@ -201,7 +201,6 @@ impl Renderer {
                         while i < max {
                             vertices.push(i.cos() * r);
                             vertices.push(i.sin() * r);
-                            vertices.push(0.);
                             i += max / points;
                         }
 
@@ -240,18 +239,18 @@ impl Renderer {
                         //self.gl.bind_vertex_array(Some(vertex_array));
 
                         let vertex_buffer_data = [
-                            0., 0., 0.,
-                            width, height, 0.,
-                            0., height, 0.,
+                            0., 0.,
+                            width, height,
+                            0., height,
                             //
-                            width, 0., 0.,
-                            width, height, 0.,
-                            0., 0., 0.,
+                            width, 0.,
+                            width, height,
+                            0., 0.,
                         ];
 
                         //let vertex_buffer = self.gl.create_buffer().unwrap();
                         //self.gl.bind_buffer(glow::ARRAY_BUFFER, Some(vertex_buffer));
-                        self.gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, &std::mem::transmute::<[f32; 18], [u8; 72]>(vertex_buffer_data), glow::DYNAMIC_DRAW);
+                        self.gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, &std::mem::transmute::<[f32; 12], [u8; 48]>(vertex_buffer_data), glow::DYNAMIC_DRAW);
 
                         //self.gl.enable_vertex_attrib_array(0);
                         //self.gl.vertex_attrib_pointer_f32(0, 3, glow::FLOAT, false, 0, 0);
