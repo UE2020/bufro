@@ -54,17 +54,20 @@ int main()
     // -----------
     bfr_set_clear_color(surface, bfr_colorf(0.5, 0.5, 0.5, 0.5));
     int x = 0;
+    float r = 0;
+    float counter = 0;
     while (!glfwWindowShouldClose(window))
     {
+        counter += 0.01;
         // input
         // -----
         processInput(window);
-
+        r += 0.1;
 //                        ctx.circle(x, y, 60., bufro::Color::from_8(191, 134, 53, 1));
 //                        ctx.circle(x, y, 50., bufro::Color::from_8(255, 179, 71, 1));
-        bfr_rect(surface, x, 300, 100, 100, bfr_color8(100, 100, 100, 1));
-        bfr_circle(surface, x, 100, 100, bfr_color8(191, 134, 53, 1));
-        bfr_circle(surface, x, 100, 90, bfr_color8(255, 179, 71, 1));
+        bfr_rect(surface, sin(counter) * 600, 300, 100, 100, r, bfr_color8(100, 100, 100, 1));
+        bfr_circle(surface, sin(counter) * 600, 100, 100, bfr_color8(191, 134, 53, 1));
+        bfr_circle(surface, sin(counter) * 600, 100, 90, bfr_color8(255, 179, 71, 1));
         x++;
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)

@@ -32,7 +32,13 @@ void bfr_destroy(Renderer *renderer);
 
 void bfr_flush(Renderer *renderer);
 
-void bfr_rect(Renderer *renderer, float x, float y, float width, float height, Color color);
+void bfr_rect(Renderer *renderer,
+              float x,
+              float y,
+              float width,
+              float height,
+              float angle,
+              Color color);
 
 void bfr_resize(Renderer *renderer, int32_t width, int32_t height);
 

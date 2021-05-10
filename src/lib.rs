@@ -58,7 +58,11 @@ pub struct Renderer {
     gl: Context, // the main context
     program: u32, // the main shader
     command_stack: Vec<Command>, // clear command_stack on flush,
-    projection: cgmath::Matrix4<f32>
+    projection: cgmath::Matrix4<f32>,
+
+    // caching
+    vertex_array: u32,
+    vertex_buffer: u32
 }
 
 impl Renderer {
@@ -121,7 +125,16 @@ impl Renderer {
 
             let mut m_viewport: [i32; 7] = [0; 7];
 
-            gl.get_parameter_i32_slice(glow::VIEWPORT, &mut m_viewport);            
+            gl.get_parameter_i32_slice(glow::VIEWPORT, &mut m_viewport);  
+            
+            let vertex_array = gl.create_vertex_array().unwrap();
+            gl.bind_vertex_array(Some(vertex_array));
+
+            let vertex_buffer = gl.create_buffer().unwrap();
+            gl.bind_buffer(glow::ARRAY_BUFFER, Some(vertex_buffer));
+
+            gl.enable_vertex_attrib_array(0);
+            gl.vertex_attrib_pointer_f32(0, 3, glow::FLOAT, false, 0, 0);
 
             Self {
                 gl,
@@ -134,7 +147,9 @@ impl Renderer {
                     0.,
                     0.,
                     1.
-                )
+                ),
+                vertex_array,
+                vertex_buffer
             }
         }
     }
@@ -157,7 +172,7 @@ impl Renderer {
 
                         let vertex_buffer = self.gl.create_buffer().unwrap();
                         self.gl.bind_buffer(glow::ARRAY_BUFFER, Some(vertex_buffer));
-                        self.gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, &std::mem::transmute::<[f32; 9], [u8; 36]>(vertex_buffer_data), glow::STATIC_DRAW);
+                        self.gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, &std::mem::transmute::<[f32; 9], [u8; 36]>(vertex_buffer_data), glow::DYNAMIC_DRAW);
 
                         self.gl.enable_vertex_attrib_array(0);
                         self.gl.vertex_attrib_pointer_f32(0, 3, glow::FLOAT, false, 0, 0);
@@ -176,8 +191,8 @@ impl Renderer {
                         self.gl.delete_buffer(vertex_buffer);
                     },
                     Command::Circle { x, y, r, color } => {
-                        let vertex_array = self.gl.create_vertex_array().unwrap();
-                        self.gl.bind_vertex_array(Some(vertex_array));
+                        //let vertex_array = self.gl.create_vertex_array().unwrap();
+                        //self.gl.bind_vertex_array(Some(vertex_array));
 
                         let max = PI * 2.;
                         let mut vertices = Vec::with_capacity(max as usize + 1);
@@ -196,12 +211,12 @@ impl Renderer {
                         }
 
 
-                        let vertex_buffer = self.gl.create_buffer().unwrap();
-                        self.gl.bind_buffer(glow::ARRAY_BUFFER, Some(vertex_buffer));
-                        self.gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, vertex_buffer_data.as_ref(), glow::STREAM_DRAW);
+                        //let vertex_buffer = self.gl.create_buffer().unwrap();
+                        //self.gl.bind_buffer(glow::ARRAY_BUFFER, Some(vertex_buffer));
+                        self.gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, vertex_buffer_data.as_ref(), glow::DYNAMIC_DRAW);
 
-                        self.gl.enable_vertex_attrib_array(0);
-                        self.gl.vertex_attrib_pointer_f32(0, 3, glow::FLOAT, false, 0, 0);
+                        //self.gl.enable_vertex_attrib_array(0);
+                        //self.gl.vertex_attrib_pointer_f32(0, 3, glow::FLOAT, false, 0, 0);
 
                         let loc = &self.gl.get_uniform_location(self.program, "transform").unwrap();
 
@@ -217,12 +232,12 @@ impl Renderer {
 
                         self.gl.draw_arrays(glow::TRIANGLE_FAN, 0, vertices.len() as i32);
 
-                        self.gl.delete_vertex_array(vertex_array); // clean up
-                        self.gl.delete_buffer(vertex_buffer);
+                        //self.gl.delete_vertex_array(vertex_array); // clean up
+                        //self.gl.delete_buffer(vertex_buffer);
                     },
                     Command::Rectangle { x, y, width, height, color, angle } => {
-                        let vertex_array = self.gl.create_vertex_array().unwrap();
-                        self.gl.bind_vertex_array(Some(vertex_array));
+                        //let vertex_array = self.gl.create_vertex_array().unwrap();
+                        //self.gl.bind_vertex_array(Some(vertex_array));
 
                         let vertex_buffer_data = [
                             0., 0., 0.,
@@ -234,12 +249,12 @@ impl Renderer {
                             0., 0., 0.,
                         ];
 
-                        let vertex_buffer = self.gl.create_buffer().unwrap();
-                        self.gl.bind_buffer(glow::ARRAY_BUFFER, Some(vertex_buffer));
-                        self.gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, &std::mem::transmute::<[f32; 18], [u8; 72]>(vertex_buffer_data), glow::STREAM_DRAW);
+                        //let vertex_buffer = self.gl.create_buffer().unwrap();
+                        //self.gl.bind_buffer(glow::ARRAY_BUFFER, Some(vertex_buffer));
+                        self.gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, &std::mem::transmute::<[f32; 18], [u8; 72]>(vertex_buffer_data), glow::DYNAMIC_DRAW);
 
-                        self.gl.enable_vertex_attrib_array(0);
-                        self.gl.vertex_attrib_pointer_f32(0, 3, glow::FLOAT, false, 0, 0);
+                        //self.gl.enable_vertex_attrib_array(0);
+                        //self.gl.vertex_attrib_pointer_f32(0, 3, glow::FLOAT, false, 0, 0);
 
                         let loc = &self.gl.get_uniform_location(self.program, "transform").unwrap();
 
@@ -259,8 +274,8 @@ impl Renderer {
 
                         self.gl.draw_arrays(glow::TRIANGLE_FAN, 0, vertex_buffer_data.len() as i32);
 
-                        self.gl.delete_vertex_array(vertex_array); // clean up
-                        self.gl.delete_buffer(vertex_buffer);
+                        //self.gl.delete_vertex_array(vertex_array); // clean up
+                        //self.gl.delete_buffer(vertex_buffer);
                     },
                     _ => ()
                 }
