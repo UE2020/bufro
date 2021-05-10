@@ -119,7 +119,7 @@ private_default_tagged_enum_constructor = false
 
 [const]
 allow_static_const = true
-allow_constexpr = false
+allow_constexpr = true
 sort_by = "Name"
 
 
