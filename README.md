@@ -18,6 +18,7 @@ Mostly unfinished
 - [ ] Rounded rectangle
 - [ ] Use Lyon for tesselation
 - [ ] Custom shader language
+- [ ] Web API (using wasm-bindgen)
 
 
 # Demo
