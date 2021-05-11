@@ -2,7 +2,7 @@
 name = "bufro"
 description = "2D vector graphics with C++ and Rust API"
 version = "0.1.0"
-license = "GPL"
+license = "GPL-3.0"
 readme = "README.md"
 authors = ["Aspect"]
 keywords = ["graphics", "canvas", "drawing", "gpu", "opengl"]
