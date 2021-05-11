@@ -340,7 +340,11 @@ impl Renderer {
     }
 
     pub fn destroy(self) {
-        unsafe { self.gl.delete_program(self.program) }
+        unsafe {
+            self.gl.delete_program(self.program); // clean up program
+            self.gl.delete_vertex_array(self.vertex_array); // clean up buffers
+            self.gl.delete_buffer(self.vertex_buffer);
+        }
     }
 
     pub fn set_clear_color(&self, color: Color) {
@@ -383,6 +387,10 @@ pub unsafe extern "C" fn bfr_resize(renderer: *mut Renderer, width: i32, height:
 #[no_mangle]
 pub unsafe extern "C" fn bfr_destroy(renderer: *mut Renderer) {
     (*renderer).gl.delete_program((*renderer).program); // TODO: Fix
+    (*renderer).gl.delete_vertex_array((*renderer).vertex_array); // TODO: Fix
+    (*renderer).gl.delete_buffer((*renderer).vertex_buffer); // TODO: Fix
+
+    // free renderer
     libc::free(renderer as *mut libc::c_void);
 }
 
