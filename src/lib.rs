@@ -297,6 +297,8 @@ impl Renderer {
                     _ => (),
                 }
             }
+
+            self.transform = cgmath::Matrix4::identity();
         }
     }
 
