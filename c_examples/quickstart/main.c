@@ -1,7 +1,7 @@
 #include <bufro.h>
 #include <GLFW/glfw3.h>
-#include <iostream>
-#include <cmath>
+#include <stdio.h>
+#include <math.h>
 
 // Settings
 const unsigned int SCR_WIDTH = 800;
@@ -23,7 +23,7 @@ void process_input(GLFWwindow *window) {
 const void* load_ptrs(const char* s) {
     GLFWglproc ptr = glfwGetProcAddress(s);
     if (ptr == NULL) {
-        std::cout << "Failed to load " << s << std::endl;
+        printf("Failed to load %s\n", s);
     }
     return (const void*) glfwGetProcAddress(s);
 }
@@ -42,7 +42,7 @@ int main() {
     // Create glfw window
     GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
     if (window == NULL) {
-        std::cout << "Failed to create GLFW window\n";
+        puts("Failed to create GLFW window");
         glfwTerminate();
         return -1;
     }

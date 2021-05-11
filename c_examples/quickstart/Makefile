@@ -1,9 +1,9 @@
-CC=g++
-CFLAGS=-g -O2 -lbufro -lX11 -lGL -lGLU -lglfw
+CC=gcc
+CFLAGS=-g -O2 -lbufro -lX11 -lGL -lGLU -lglfw -lm
 TARGET=quickstart
 
-$(TARGET): main.cpp
-	$(CC) main.cpp $(CFLAGS) -o $(TARGET)
+$(TARGET): main.c
+	$(CC) main.c $(CFLAGS) -o $(TARGET)
 
 clean:
 	$(RM) $(TARGET)
