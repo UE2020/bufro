@@ -1,9 +1,8 @@
-use glow::*;
+use cgmath::SquareMatrix;
 use cgmath::Zero;
+use glow::*;
 use std::convert::AsRef;
 use std::f32::consts::PI;
-use cgmath::SquareMatrix;
-
 
 /// Represents a color with values from 0-1
 #[repr(C)]
@@ -11,17 +10,15 @@ pub struct Color {
     pub r: f32,
     pub g: f32,
     pub b: f32,
-    pub a: f32
+    pub a: f32,
 }
 
 impl Color {
-    pub fn from_f (r: f32, g: f32, b: f32, a: f32) -> Self {
-        Self {
-            r, g, b, a
-        }
+    pub fn from_f(r: f32, g: f32, b: f32, a: f32) -> Self {
+        Self { r, g, b, a }
     }
 
-    pub fn from_8 (r: u8, g: u8, b: u8, a: u8) -> Self {
+    pub fn from_8(r: u8, g: u8, b: u8, a: u8) -> Self {
         Self {
             r: r as f32 / 255.,
             g: g as f32 / 255.,
@@ -35,13 +32,13 @@ impl Color {
 pub enum Command {
     Triangle {
         x: f32,
-        y: f32
+        y: f32,
     },
     Circle {
         x: f32,
         y: f32,
         r: f32,
-        color: Color
+        color: Color,
     },
     Rectangle {
         x: f32,
@@ -49,14 +46,14 @@ pub enum Command {
         width: f32,
         height: f32,
         angle: f32,
-        color: Color
-    }
+        color: Color,
+    },
 }
 
 /// A basic window-less renderer (though you can always just load the function pointers of a window)
 pub struct Renderer {
-    gl: Context, // the main context
-    program: u32, // the main shader
+    gl: Context,                 // the main context
+    program: u32,                // the main shader
     command_stack: Vec<Command>, // clear command_stack on flush,
     projection: cgmath::Matrix4<f32>,
 
@@ -71,7 +68,7 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    pub fn new<F: FnMut(&str) -> *const std::os::raw::c_void> (function_loader: F) -> Self {
+    pub fn new<F: FnMut(&str) -> *const std::os::raw::c_void>(function_loader: F) -> Self {
         unsafe {
             let gl = glow::Context::from_loader_function(function_loader); // load function pointers
 
@@ -130,8 +127,8 @@ impl Renderer {
 
             let mut m_viewport: [i32; 7] = [0; 7];
 
-            gl.get_parameter_i32_slice(glow::VIEWPORT, &mut m_viewport);  
-            
+            gl.get_parameter_i32_slice(glow::VIEWPORT, &mut m_viewport);
+
             let vertex_array = gl.create_vertex_array().unwrap();
             gl.bind_vertex_array(Some(vertex_array));
 
@@ -151,21 +148,22 @@ impl Renderer {
                     m_viewport[3] as f32,
                     0.,
                     0.,
-                    1.
+                    1.,
                 ),
                 vertex_array,
                 vertex_buffer,
 
                 rotation: 0.,
                 translation: cgmath::vec2(0., 0.),
-                scale: cgmath::vec2(1., 1.)
+                scale: cgmath::vec2(1., 1.),
             }
         }
     }
 
-    pub fn flush (&mut self) {
+    pub fn flush(&mut self) {
         unsafe {
-            self.gl.clear(glow::COLOR_BUFFER_BIT | glow::DEPTH_BUFFER_BIT);
+            self.gl
+                .clear(glow::COLOR_BUFFER_BIT | glow::DEPTH_BUFFER_BIT);
 
             for command in self.command_stack.drain(0..) {
                 match command {
@@ -173,20 +171,24 @@ impl Renderer {
                         let vertex_array = self.gl.create_vertex_array().unwrap();
                         self.gl.bind_vertex_array(Some(vertex_array));
 
-                        let vertex_buffer_data = [
-                            -50., -50., 0.,
-                            50., -50., 0.,
-                            0., 50., 0.
-                        ];
+                        let vertex_buffer_data = [-50., -50., 0., 50., -50., 0., 0., 50., 0.];
 
                         let vertex_buffer = self.gl.create_buffer().unwrap();
                         self.gl.bind_buffer(glow::ARRAY_BUFFER, Some(vertex_buffer));
-                        self.gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, &std::mem::transmute::<[f32; 9], [u8; 36]>(vertex_buffer_data), glow::DYNAMIC_DRAW);
+                        self.gl.buffer_data_u8_slice(
+                            glow::ARRAY_BUFFER,
+                            &std::mem::transmute::<[f32; 9], [u8; 36]>(vertex_buffer_data),
+                            glow::DYNAMIC_DRAW,
+                        );
 
                         self.gl.enable_vertex_attrib_array(0);
-                        self.gl.vertex_attrib_pointer_f32(0, 3, glow::FLOAT, false, 0, 0);
+                        self.gl
+                            .vertex_attrib_pointer_f32(0, 3, glow::FLOAT, false, 0, 0);
 
-                        let loc = &self.gl.get_uniform_location(self.program, "transform").unwrap();
+                        let loc = &self
+                            .gl
+                            .get_uniform_location(self.program, "transform")
+                            .unwrap();
 
                         let mut mat = cgmath::Matrix4::zero();
                         mat.w.x = x;
@@ -198,7 +200,7 @@ impl Renderer {
 
                         self.gl.delete_vertex_array(vertex_array);
                         self.gl.delete_buffer(vertex_buffer);
-                    },
+                    }
                     Command::Circle { x, y, r, color } => {
                         let max = PI * 2.;
                         let mut vertices = Vec::with_capacity(max as usize + 1);
@@ -215,43 +217,64 @@ impl Renderer {
                             vertex_buffer_data.extend_from_slice(&float.to_le_bytes());
                         }
 
-                        self.gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, vertex_buffer_data.as_ref(), glow::DYNAMIC_DRAW);
+                        self.gl.buffer_data_u8_slice(
+                            glow::ARRAY_BUFFER,
+                            vertex_buffer_data.as_ref(),
+                            glow::DYNAMIC_DRAW,
+                        );
 
-                        let loc = &self.gl.get_uniform_location(self.program, "transform").unwrap();
+                        let loc = &self
+                            .gl
+                            .get_uniform_location(self.program, "transform")
+                            .unwrap();
 
                         let mut mat = cgmath::Matrix4::identity();
                         mat.w.x = x + self.translation.x;
                         mat.w.y = y + self.translation.y;
-                        
+
                         let rot_mat = cgmath::Matrix4::from_angle_z(cgmath::Rad(self.rotation));
-                        let scale_mat = cgmath::Matrix4::from_nonuniform_scale(self.scale.x, self.scale.y, 1.);
-                        let translation_mat = cgmath::Matrix4::from_translation(cgmath::vec3(self.translation.x, self.translation.y, 0.));
+                        let scale_mat =
+                            cgmath::Matrix4::from_nonuniform_scale(self.scale.x, self.scale.y, 1.);
+                        let translation_mat = cgmath::Matrix4::from_translation(cgmath::vec3(
+                            self.translation.x,
+                            self.translation.y,
+                            0.,
+                        ));
 
-
-                        let final_mat = self.projection * rot_mat * scale_mat * translation_mat * mat;
+                        let final_mat =
+                            self.projection * rot_mat * scale_mat * translation_mat * mat;
                         let proj: &[f32; 16] = final_mat.as_ref();
                         self.gl.uniform_matrix_4_f32_slice(Some(loc), false, proj);
 
                         let loc = &self.gl.get_uniform_location(self.program, "col").unwrap();
                         self.gl.uniform_3_f32(Some(loc), color.r, color.g, color.b);
 
-                        self.gl.draw_arrays(glow::TRIANGLE_FAN, 0, vertices.len() as i32);
-                    },
-                    Command::Rectangle { x, y, width, height, color, angle } => {
+                        self.gl
+                            .draw_arrays(glow::TRIANGLE_FAN, 0, vertices.len() as i32);
+                    }
+                    Command::Rectangle {
+                        x,
+                        y,
+                        width,
+                        height,
+                        color,
+                        angle,
+                    } => {
                         let vertex_buffer_data = [
-                            0., 0.,
-                            width, height,
-                            0., height,
-                            //
-                            width, 0.,
-                            width, height,
-                            0., 0.,
+                            0., 0., width, height, 0., height, //
+                            width, 0., width, height, 0., 0.,
                         ];
 
+                        self.gl.buffer_data_u8_slice(
+                            glow::ARRAY_BUFFER,
+                            &std::mem::transmute::<[f32; 12], [u8; 48]>(vertex_buffer_data),
+                            glow::DYNAMIC_DRAW,
+                        );
 
-                        self.gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, &std::mem::transmute::<[f32; 12], [u8; 48]>(vertex_buffer_data), glow::DYNAMIC_DRAW);
-
-                        let loc = &self.gl.get_uniform_location(self.program, "transform").unwrap();
+                        let loc = &self
+                            .gl
+                            .get_uniform_location(self.program, "transform")
+                            .unwrap();
 
                         let mut mat = cgmath::Matrix4::identity();
                         let final_angle = self.rotation + angle;
@@ -261,86 +284,93 @@ impl Renderer {
                         mat.x.y = -final_angle.sin();
                         mat.y.x = final_angle.sin();
                         mat.y.y = final_angle.cos();
-                        
-                        let rot_mat = cgmath::Matrix4::from_angle_z(cgmath::Rad(self.rotation));
-                        let scale_mat = cgmath::Matrix4::from_nonuniform_scale(self.scale.x, self.scale.y, 1.);
-                        let translation_mat = cgmath::Matrix4::from_translation(cgmath::vec3(self.translation.x, self.translation.y, 0.));
 
-                        let final_mat = self.projection * rot_mat * scale_mat * translation_mat * mat;
+                        let rot_mat = cgmath::Matrix4::from_angle_z(cgmath::Rad(self.rotation));
+                        let scale_mat =
+                            cgmath::Matrix4::from_nonuniform_scale(self.scale.x, self.scale.y, 1.);
+                        let translation_mat = cgmath::Matrix4::from_translation(cgmath::vec3(
+                            self.translation.x,
+                            self.translation.y,
+                            0.,
+                        ));
+
+                        let final_mat =
+                            self.projection * rot_mat * scale_mat * translation_mat * mat;
                         let proj: &[f32; 16] = final_mat.as_ref();
                         self.gl.uniform_matrix_4_f32_slice(Some(loc), false, proj);
 
                         let loc = &self.gl.get_uniform_location(self.program, "col").unwrap();
                         self.gl.uniform_3_f32(Some(loc), color.r, color.g, color.b);
 
-                        self.gl.draw_arrays(glow::TRIANGLE_FAN, 0, vertex_buffer_data.len() as i32);
-                    },
-                    _ => ()
+                        self.gl
+                            .draw_arrays(glow::TRIANGLE_FAN, 0, vertex_buffer_data.len() as i32);
+                    }
+                    _ => (),
                 }
             }
         }
     }
 
-    pub fn triangle (&mut self, x: f32, y: f32) {
+    pub fn triangle(&mut self, x: f32, y: f32) {
         self.command_stack.push(Command::Triangle { x, y })
     }
 
-    pub fn rect (&mut self, x: f32, y: f32, width: f32, height: f32, angle: f32, color: Color) {
-        self.command_stack.push(Command::Rectangle { x, y, width, height, color, angle })
+    pub fn rect(&mut self, x: f32, y: f32, width: f32, height: f32, angle: f32, color: Color) {
+        self.command_stack.push(Command::Rectangle {
+            x,
+            y,
+            width,
+            height,
+            color,
+            angle,
+        })
     }
 
-    pub fn circle (&mut self, x: f32, y: f32, r: f32, color: Color) {
+    pub fn circle(&mut self, x: f32, y: f32, r: f32, color: Color) {
         self.command_stack.push(Command::Circle { x, y, r, color })
     }
 
-    pub fn resize (&mut self, width: i32, height: i32) {
+    pub fn resize(&mut self, width: i32, height: i32) {
         unsafe {
             let size = 200.;
             let aspect = width as f32 / height as f32;
-            self.projection = cgmath::ortho(
-                0.,
-                width as f32,
-                height as f32,
-                0.,
-                0.,
-                1.
-            );
+            self.projection = cgmath::ortho(0., width as f32, height as f32, 0., 0., 1.);
             self.gl.viewport(0, 0, width, height); // resize viewport
         }
     }
 
-    pub fn destroy (self) {
+    pub fn destroy(self) {
         unsafe { self.gl.delete_program(self.program) }
     }
 
-    pub fn set_clear_color (&self, color: Color) {
+    pub fn set_clear_color(&self, color: Color) {
         unsafe {
             self.gl.clear_color(color.r, color.g, color.b, color.a);
         }
     }
 
-    pub fn scale (&mut self, x: f32, y: f32) {
+    pub fn scale(&mut self, x: f32, y: f32) {
         self.scale.x += x;
         self.scale.y += y;
     }
 
-    pub fn rotate (&mut self, x: f32) {
+    pub fn rotate(&mut self, x: f32) {
         self.rotation += x;
     }
 
-    pub fn translate (&mut self, x: f32, y: f32) {
+    pub fn translate(&mut self, x: f32, y: f32) {
         self.translation.x += x;
         self.translation.y += y;
     }
 }
 
-
 use std::ffi::c_void;
 use std::ffi::{CStr, CString};
 
-
 #[no_mangle]
-pub unsafe extern "C" fn bfr_create_surface(loader: extern "C" fn(*const libc::c_char) -> *const c_void) -> *mut Renderer {
+pub unsafe extern "C" fn bfr_create_surface(
+    loader: extern "C" fn(*const libc::c_char) -> *const c_void,
+) -> *mut Renderer {
     let renderer = Box::new(Renderer::new(|s| loader(s.as_ptr() as *const libc::c_char)));
     Box::into_raw(renderer)
 }
@@ -382,6 +412,31 @@ pub unsafe extern "C" fn bfr_set_clear_color(renderer: *mut Renderer, color: Col
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn bfr_rect(renderer: *mut Renderer, x: f32, y: f32, width: f32, height: f32, angle: f32, color: Color) {
+pub unsafe extern "C" fn bfr_rect(
+    renderer: *mut Renderer,
+    x: f32,
+    y: f32,
+    width: f32,
+    height: f32,
+    angle: f32,
+    color: Color,
+) {
     (*renderer).rect(x, y, width, height, angle, color);
+}
+
+// transforms
+
+#[no_mangle]
+pub unsafe extern "C" fn bfr_translate(renderer: *mut Renderer, x: f32, y: f32) {
+    (*renderer).translate(x, y);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn bfr_scale(renderer: *mut Renderer, x: f32, y: f32) {
+    (*renderer).scale(x, y);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn bfr_rotate(renderer: *mut Renderer, x: f32) {
+    (*renderer).rotate(x);
 }

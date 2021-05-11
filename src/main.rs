@@ -7,7 +7,7 @@ struct Keys {
     W: bool,
     A: bool,
     S: bool,
-    D: bool
+    D: bool,
 }
 
 fn main() {
@@ -54,8 +54,7 @@ fn main() {
                         anim += 0.01;
                         if keys.A {
                             x -= 5.;
-                        }
-                        else if keys.D {
+                        } else if keys.D {
                             x += 5.;
                         }
 
@@ -76,7 +75,6 @@ fn main() {
                         //ctx.circle(300. + anim.sin() * 600., y, 60., bufro::Color::from_8(191, 134, 53, 1));
                         //ctx.circle(300. + anim.sin() * 600., y, 50., bufro::Color::from_8(255, 179, 71, 1));
 
-
                         ctx.flush();
                         window.swap_buffers().unwrap();
                     }
@@ -84,7 +82,7 @@ fn main() {
                         WindowEvent::Resized(physical_size) => {
                             ctx.resize(physical_size.width as i32, physical_size.height as i32);
                             window.resize(*physical_size);
-                        },
+                        }
                         WindowEvent::CursorMoved { position, .. } => {
                             //x = position.x as f32;
                             //y = position.y as f32;
@@ -92,27 +90,51 @@ fn main() {
                         }
                         WindowEvent::KeyboardInput { input, .. } => {
                             if !input.virtual_keycode.is_none() {
-                                if input.virtual_keycode.unwrap() == glutin::event::VirtualKeyCode::A && input.state == glutin::event::ElementState::Pressed {
+                                if input.virtual_keycode.unwrap()
+                                    == glutin::event::VirtualKeyCode::A
+                                    && input.state == glutin::event::ElementState::Pressed
+                                {
                                     keys.A = true;
-                                } else if input.virtual_keycode.unwrap() == glutin::event::VirtualKeyCode::A && input.state == glutin::event::ElementState::Released {
+                                } else if input.virtual_keycode.unwrap()
+                                    == glutin::event::VirtualKeyCode::A
+                                    && input.state == glutin::event::ElementState::Released
+                                {
                                     keys.A = false;
                                 }
-    
-                                if input.virtual_keycode.unwrap() == glutin::event::VirtualKeyCode::D && input.state == glutin::event::ElementState::Pressed {
+
+                                if input.virtual_keycode.unwrap()
+                                    == glutin::event::VirtualKeyCode::D
+                                    && input.state == glutin::event::ElementState::Pressed
+                                {
                                     keys.D = true;
-                                } else if input.virtual_keycode.unwrap() == glutin::event::VirtualKeyCode::D && input.state == glutin::event::ElementState::Released {
+                                } else if input.virtual_keycode.unwrap()
+                                    == glutin::event::VirtualKeyCode::D
+                                    && input.state == glutin::event::ElementState::Released
+                                {
                                     keys.D = false;
                                 }
-    
-                                if input.virtual_keycode.unwrap() == glutin::event::VirtualKeyCode::W && input.state == glutin::event::ElementState::Pressed {
+
+                                if input.virtual_keycode.unwrap()
+                                    == glutin::event::VirtualKeyCode::W
+                                    && input.state == glutin::event::ElementState::Pressed
+                                {
                                     keys.W = true;
-                                } else if input.virtual_keycode.unwrap() == glutin::event::VirtualKeyCode::W && input.state == glutin::event::ElementState::Released {
+                                } else if input.virtual_keycode.unwrap()
+                                    == glutin::event::VirtualKeyCode::W
+                                    && input.state == glutin::event::ElementState::Released
+                                {
                                     keys.W = false;
                                 }
-    
-                                if input.virtual_keycode.unwrap() == glutin::event::VirtualKeyCode::S && input.state == glutin::event::ElementState::Pressed {
+
+                                if input.virtual_keycode.unwrap()
+                                    == glutin::event::VirtualKeyCode::S
+                                    && input.state == glutin::event::ElementState::Pressed
+                                {
                                     keys.S = true;
-                                } else if input.virtual_keycode.unwrap() == glutin::event::VirtualKeyCode::S && input.state == glutin::event::ElementState::Released {
+                                } else if input.virtual_keycode.unwrap()
+                                    == glutin::event::VirtualKeyCode::S
+                                    && input.state == glutin::event::ElementState::Released
+                                {
                                     keys.S = false;
                                 }
                             }
