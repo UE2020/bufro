@@ -5,6 +5,7 @@ use std::convert::AsRef;
 use std::f32::consts::PI;
 
 /// Represents a color with values from 0-1
+#[derive(Clone)]
 #[repr(C)]
 pub struct Color {
     pub r: f32,
@@ -39,6 +40,7 @@ pub enum Command {
         y: f32,
         r: f32,
         color: Color,
+        transform: cgmath::Matrix4<f32>
     },
     Rectangle {
         x: f32,
@@ -47,7 +49,16 @@ pub enum Command {
         height: f32,
         angle: f32,
         color: Color,
+        transform: cgmath::Matrix4<f32>
     },
+}
+
+
+#[derive(Clone)]
+pub struct Transform {
+    rotation: f32,
+    translation: cgmath::Vector2<f32>,
+    scale: cgmath::Vector2<f32>
 }
 
 /// A basic window-less renderer (though you can always just load the function pointers of a window)
@@ -62,9 +73,7 @@ pub struct Renderer {
     vertex_buffer: u32,
 
     // matrix
-    rotation: f32,
-    translation: cgmath::Vector2<f32>,
-    scale: cgmath::Vector2<f32>,
+    transform: cgmath::Matrix4<f32>
 }
 
 impl Renderer {
@@ -153,9 +162,7 @@ impl Renderer {
                 vertex_array,
                 vertex_buffer,
 
-                rotation: 0.,
-                translation: cgmath::vec2(0., 0.),
-                scale: cgmath::vec2(1., 1.),
+                transform: cgmath::Matrix4::identity()
             }
         }
     }
@@ -201,7 +208,7 @@ impl Renderer {
                         self.gl.delete_vertex_array(vertex_array);
                         self.gl.delete_buffer(vertex_buffer);
                     }
-                    Command::Circle { x, y, r, color } => {
+                    Command::Circle { x, y, r, color, transform } => {
                         let max = PI * 2.;
                         let mut vertices = Vec::with_capacity(max as usize + 1);
                         let mut i = 0.;
@@ -229,20 +236,11 @@ impl Renderer {
                             .unwrap();
 
                         let mut mat = cgmath::Matrix4::identity();
-                        mat.w.x = x + self.translation.x;
-                        mat.w.y = y + self.translation.y;
-
-                        let rot_mat = cgmath::Matrix4::from_angle_z(cgmath::Rad(self.rotation));
-                        let scale_mat =
-                            cgmath::Matrix4::from_nonuniform_scale(self.scale.x, self.scale.y, 1.);
-                        let translation_mat = cgmath::Matrix4::from_translation(cgmath::vec3(
-                            self.translation.x,
-                            self.translation.y,
-                            0.,
-                        ));
+                        mat.w.x = x;
+                        mat.w.y = y;
 
                         let final_mat =
-                            self.projection * rot_mat * scale_mat * translation_mat * mat;
+                            self.projection * transform * mat;
                         let proj: &[f32; 16] = final_mat.as_ref();
                         self.gl.uniform_matrix_4_f32_slice(Some(loc), false, proj);
 
@@ -259,6 +257,7 @@ impl Renderer {
                         height,
                         color,
                         angle,
+                        transform
                     } => {
                         let vertex_buffer_data = [
                             0., 0., width, height, 0., height, //
@@ -277,25 +276,15 @@ impl Renderer {
                             .unwrap();
 
                         let mut mat = cgmath::Matrix4::identity();
-                        let final_angle = self.rotation + angle;
-                        mat.w.x = x + self.translation.x;
-                        mat.w.y = y + self.translation.y;
-                        mat.x.x = final_angle.cos();
-                        mat.x.y = -final_angle.sin();
-                        mat.y.x = final_angle.sin();
-                        mat.y.y = final_angle.cos();
-
-                        let rot_mat = cgmath::Matrix4::from_angle_z(cgmath::Rad(self.rotation));
-                        let scale_mat =
-                            cgmath::Matrix4::from_nonuniform_scale(self.scale.x, self.scale.y, 1.);
-                        let translation_mat = cgmath::Matrix4::from_translation(cgmath::vec3(
-                            self.translation.x,
-                            self.translation.y,
-                            0.,
-                        ));
+                        mat.w.x = x;
+                        mat.w.y = y;
+                        mat.x.x = angle.cos();
+                        mat.x.y = -angle.sin();
+                        mat.y.x = angle.sin();
+                        mat.y.y = angle.cos();
 
                         let final_mat =
-                            self.projection * rot_mat * scale_mat * translation_mat * mat;
+                            self.projection * transform * mat;
                         let proj: &[f32; 16] = final_mat.as_ref();
                         self.gl.uniform_matrix_4_f32_slice(Some(loc), false, proj);
 
@@ -323,11 +312,12 @@ impl Renderer {
             height,
             color,
             angle,
+            transform: self.transform.clone()
         })
     }
 
     pub fn circle(&mut self, x: f32, y: f32, r: f32, color: Color) {
-        self.command_stack.push(Command::Circle { x, y, r, color })
+        self.command_stack.push(Command::Circle { x, y, r, color, transform: self.transform.clone() })
     }
 
     pub fn resize(&mut self, width: i32, height: i32) {
@@ -354,17 +344,19 @@ impl Renderer {
     }
 
     pub fn scale(&mut self, x: f32, y: f32) {
-        self.scale.x += x;
-        self.scale.y += y;
+        self.transform = self.transform * cgmath::Matrix4::from_nonuniform_scale(x, y, 1.);
     }
 
     pub fn rotate(&mut self, x: f32) {
-        self.rotation += x;
+        self.transform = self.transform * cgmath::Matrix4::from_angle_z(cgmath::Rad(x));
     }
 
     pub fn translate(&mut self, x: f32, y: f32) {
-        self.translation.x += x;
-        self.translation.y += y;
+        self.transform = self.transform * cgmath::Matrix4::from_translation(cgmath::vec3(
+            x,
+            y,
+            0.,
+        ));
     }
 }
 

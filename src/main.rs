@@ -63,11 +63,15 @@ fn main() {
                         } else if keys.S {
                             y += 5.;
                         }
-                        //ctx.rotate(0.1);
-                        //ctx.scale(0.1, 0.1);
-                        ctx.translate(0.1, 0.1);
-                        ctx.circle(50., 50., 100., bufro::Color::from_8(255, 179, 71, 1));
 
+                        //ctx.rotate(0.1);
+                        //ctx.translate(500., 500.,);
+                        //ctx.translate(-50., -50.);
+                        ctx.translate(200., 200.);
+                        ctx.rotate(0.1);
+                        ctx.rect(-50., -50., 100., 100., 0., bufro::Color::from_8(122, 125, 132, 255));
+                        ctx.translate(-200., -200.,);
+                        //sctx.translate(-500., -500.,);
                         //ctx.rect(300. + anim.sin() * 600., 300., 100., 100., r, bufro::Color::from_8(122, 125, 132, 255));
                         //ctx.triangle(x, y);
                         //ctx.rect(x, y - 70./2., 125. + 9., 70., 1., bufro::Color::from_8(122, 125, 132, 255));
