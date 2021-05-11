@@ -73,7 +73,8 @@ pub struct Renderer {
     vertex_buffer: u32,
 
     // matrix
-    transform: cgmath::Matrix4<f32>
+    transform: cgmath::Matrix4<f32>,
+    old_transform: cgmath::Matrix4<f32>
 }
 
 impl Renderer {
@@ -162,7 +163,8 @@ impl Renderer {
                 vertex_array,
                 vertex_buffer,
 
-                transform: cgmath::Matrix4::identity()
+                transform: cgmath::Matrix4::identity(),
+                old_transform: cgmath::Matrix4::identity()
             }
         }
     }
@@ -359,6 +361,18 @@ impl Renderer {
             y,
             0.,
         ));
+    }
+
+    pub fn save(&mut self) {
+        self.old_transform = self.transform;
+    }
+
+    pub fn restore(&mut self) {
+        self.transform = self.old_transform;
+    }
+
+    pub fn reset(&mut self) {
+        self.transform = cgmath::Matrix4::identity();
     }
 }
 
