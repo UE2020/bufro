@@ -85,21 +85,9 @@ checksum = "0d8c1fef690941d3e7788d328517591fecc684c084084702d6ff1641e993699a"
 name = "bufro"
 version = "0.1.0"
 dependencies = [
- "bufro 0.1.0 (git+https://github.com/UE2020/bufro.git?branch=main)",
  "cbindgen",
  "cgmath",
  "env_logger",
- "glow",
- "glutin",
- "libc",
-]
-
-[[package]]
-name = "bufro"
-version = "0.1.0"
-source = "git+https://github.com/UE2020/bufro.git?branch=main#577c48e538c47fdea30706452cd4f7be89353af4"
-dependencies = [
- "cgmath",
  "glow",
  "glutin",
  "libc",
