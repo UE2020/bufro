@@ -40,9 +40,15 @@ void bfr_rect(Renderer *renderer,
               float angle,
               Color color);
 
+void bfr_reset(Renderer *renderer);
+
 void bfr_resize(Renderer *renderer, int32_t width, int32_t height);
 
+void bfr_restore(Renderer *renderer);
+
 void bfr_rotate(Renderer *renderer, float x);
+
+void bfr_save(Renderer *renderer);
 
 void bfr_scale(Renderer *renderer, float x, float y);
 
