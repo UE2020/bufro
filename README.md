@@ -8,7 +8,7 @@ A C++ example can be found in c_examples/main.cpp (using glfw).
 
 Mostly unfinished
 
-- [ ] Transformations (e.g. ctx.rotate)
+- [x] Transformations (e.g. ctx.rotate)
 - [x] Rectangle fill
 - [x] Circle fill
 - [ ] Circle stroke
