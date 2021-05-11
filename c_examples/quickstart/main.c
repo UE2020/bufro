@@ -59,10 +59,17 @@ int main() {
 
     while (!glfwWindowShouldClose(window)) {
         counter += 0.01;
+        bfr_scale(surface, 0.5, 0.5);
 
         process_input(window);
         r += 0.1;
-        bfr_rect(surface, 300 + sin(counter) * 600, 300, 100, 100, r, bfr_color8(100, 100, 100, 1));
+
+        bfr_save(surface);
+        bfr_translate(surface, 300 + sin(counter) * 600, 300);
+        bfr_rotate(surface, r);
+        bfr_rect(surface, -50, -50, 100, 100, 0, bfr_color8(100, 100, 100, 1));
+        bfr_restore(surface);
+        
         bfr_circle(surface, 300 + sin(counter) * 600, 200, 100, bfr_color8(191, 134, 53, 1));
         bfr_circle(surface, 300 + sin(counter) * 600, 200, 90, bfr_color8(255, 179, 71, 1));
         x++;

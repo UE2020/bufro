@@ -1,5 +1,5 @@
 ffi: include/bufro.h
-		cargo build --release
+	cargo build --release
 
 include/bufro.h:
 	cbindgen --config cbindgen.toml --crate bufro --output include/bufro.h
