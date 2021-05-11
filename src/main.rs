@@ -87,7 +87,7 @@ fn main() {
                             ctx.resize(physical_size.width as i32, physical_size.height as i32);
                             window.resize(*physical_size);
                         }
-                        WindowEvent::CursorMoved { position, .. } => {
+                        WindowEvent::CursorMoved { position: _, .. } => {
                             //x = position.x as f32;
                             //y = position.y as f32;
                             //println!("x: {} y: {}", x, y);

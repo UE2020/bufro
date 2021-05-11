@@ -115,7 +115,7 @@ impl Renderer {
                 gl.shader_source(shader, &format!("{}\n{}", "#version 410", shader_source));
                 gl.compile_shader(shader);
                 if !gl.get_shader_compile_status(shader) {
-                    panic!(gl.get_shader_info_log(shader));
+                    std::panic::panic_any(gl.get_shader_info_log(shader));
                 }
                 gl.attach_shader(program, shader);
                 shaders.push(shader);
@@ -123,7 +123,7 @@ impl Renderer {
 
             gl.link_program(program);
             if !gl.get_program_link_status(program) {
-                panic!(gl.get_program_info_log(program));
+                std::panic::panic_any(gl.get_program_info_log(program));
             }
 
             for shader in shaders {
@@ -322,8 +322,8 @@ impl Renderer {
 
     pub fn resize(&mut self, width: i32, height: i32) {
         unsafe {
-            let size = 200.;
-            let aspect = width as f32 / height as f32;
+            let _size = 200.;
+            let _aspect = width as f32 / height as f32;
             self.projection = cgmath::ortho(0., width as f32, height as f32, 0., 0., 1.);
             self.gl.viewport(0, 0, width, height); // resize viewport
         }
@@ -361,7 +361,7 @@ impl Renderer {
 }
 
 use std::ffi::c_void;
-use std::ffi::{CStr, CString};
+
 
 #[no_mangle]
 pub unsafe extern "C" fn bfr_create_surface(
