@@ -64,13 +64,17 @@ fn main() {
                         } else if keys.S {
                             y += 5.;
                         }
+                        //ctx.rotate(0.1);
+                        //ctx.scale(0.1, 0.1);
+                        ctx.translate(0.1, 0.1);
+                        ctx.circle(50., 50., 100., bufro::Color::from_8(255, 179, 71, 1));
 
-                        ctx.rect(300. + anim.sin() * 600., 300., 100., 100., r, bufro::Color::from_8(122, 125, 132, 255));
+                        //ctx.rect(300. + anim.sin() * 600., 300., 100., 100., r, bufro::Color::from_8(122, 125, 132, 255));
                         //ctx.triangle(x, y);
                         //ctx.rect(x, y - 70./2., 125. + 9., 70., 1., bufro::Color::from_8(122, 125, 132, 255));
                         //ctx.rect(x, y - 50./2., 125., 50., 1., bufro::Color::from_8(163, 167, 176, 255));
-                        ctx.circle(300. + anim.sin() * 600., y, 60., bufro::Color::from_8(191, 134, 53, 1));
-                        ctx.circle(300. + anim.sin() * 600., y, 50., bufro::Color::from_8(255, 179, 71, 1));
+                        //ctx.circle(300. + anim.sin() * 600., y, 60., bufro::Color::from_8(191, 134, 53, 1));
+                        //ctx.circle(300. + anim.sin() * 600., y, 50., bufro::Color::from_8(255, 179, 71, 1));
 
 
                         ctx.flush();

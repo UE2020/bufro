@@ -62,7 +62,12 @@ pub struct Renderer {
 
     // caching
     vertex_array: u32,
-    vertex_buffer: u32
+    vertex_buffer: u32,
+
+    // matrix
+    rotation: f32,
+    translation: cgmath::Vector2<f32>,
+    scale: cgmath::Vector2<f32>,
 }
 
 impl Renderer {
@@ -149,7 +154,11 @@ impl Renderer {
                     1.
                 ),
                 vertex_array,
-                vertex_buffer
+                vertex_buffer,
+
+                rotation: 0.,
+                translation: cgmath::vec2(0., 0.),
+                scale: cgmath::vec2(1., 1.)
             }
         }
     }
@@ -191,9 +200,6 @@ impl Renderer {
                         self.gl.delete_buffer(vertex_buffer);
                     },
                     Command::Circle { x, y, r, color } => {
-                        //let vertex_array = self.gl.create_vertex_array().unwrap();
-                        //self.gl.bind_vertex_array(Some(vertex_array));
-
                         let max = PI * 2.;
                         let mut vertices = Vec::with_capacity(max as usize + 1);
                         let mut i = 0.;
@@ -209,20 +215,20 @@ impl Renderer {
                             vertex_buffer_data.extend_from_slice(&float.to_le_bytes());
                         }
 
-
-                        //let vertex_buffer = self.gl.create_buffer().unwrap();
-                        //self.gl.bind_buffer(glow::ARRAY_BUFFER, Some(vertex_buffer));
                         self.gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, vertex_buffer_data.as_ref(), glow::DYNAMIC_DRAW);
-
-                        //self.gl.enable_vertex_attrib_array(0);
-                        //self.gl.vertex_attrib_pointer_f32(0, 3, glow::FLOAT, false, 0, 0);
 
                         let loc = &self.gl.get_uniform_location(self.program, "transform").unwrap();
 
                         let mut mat = cgmath::Matrix4::identity();
-                        mat.w.x = x;
-                        mat.w.y = y;
-                        let final_mat = self.projection * mat;
+                        mat.w.x = x + self.translation.x;
+                        mat.w.y = y + self.translation.y;
+                        
+                        let rot_mat = cgmath::Matrix4::from_angle_z(cgmath::Rad(self.rotation));
+                        let scale_mat = cgmath::Matrix4::from_nonuniform_scale(self.scale.x, self.scale.y, 1.);
+                        let translation_mat = cgmath::Matrix4::from_translation(cgmath::vec3(self.translation.x, self.translation.y, 0.));
+
+
+                        let final_mat = self.projection * rot_mat * scale_mat * translation_mat * mat;
                         let proj: &[f32; 16] = final_mat.as_ref();
                         self.gl.uniform_matrix_4_f32_slice(Some(loc), false, proj);
 
@@ -230,14 +236,8 @@ impl Renderer {
                         self.gl.uniform_3_f32(Some(loc), color.r, color.g, color.b);
 
                         self.gl.draw_arrays(glow::TRIANGLE_FAN, 0, vertices.len() as i32);
-
-                        //self.gl.delete_vertex_array(vertex_array); // clean up
-                        //self.gl.delete_buffer(vertex_buffer);
                     },
                     Command::Rectangle { x, y, width, height, color, angle } => {
-                        //let vertex_array = self.gl.create_vertex_array().unwrap();
-                        //self.gl.bind_vertex_array(Some(vertex_array));
-
                         let vertex_buffer_data = [
                             0., 0.,
                             width, height,
@@ -248,23 +248,25 @@ impl Renderer {
                             0., 0.,
                         ];
 
-                        //let vertex_buffer = self.gl.create_buffer().unwrap();
-                        //self.gl.bind_buffer(glow::ARRAY_BUFFER, Some(vertex_buffer));
-                        self.gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, &std::mem::transmute::<[f32; 12], [u8; 48]>(vertex_buffer_data), glow::DYNAMIC_DRAW);
 
-                        //self.gl.enable_vertex_attrib_array(0);
-                        //self.gl.vertex_attrib_pointer_f32(0, 3, glow::FLOAT, false, 0, 0);
+                        self.gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, &std::mem::transmute::<[f32; 12], [u8; 48]>(vertex_buffer_data), glow::DYNAMIC_DRAW);
 
                         let loc = &self.gl.get_uniform_location(self.program, "transform").unwrap();
 
                         let mut mat = cgmath::Matrix4::identity();
-                        mat.w.x = x;
-                        mat.w.y = y;
-                        mat.x.x = angle.cos();
-                        mat.x.y = -angle.sin();
-                        mat.y.x = angle.sin();
-                        mat.y.y = angle.cos();
-                        let final_mat = self.projection * mat;
+                        let final_angle = self.rotation + angle;
+                        mat.w.x = x + self.translation.x;
+                        mat.w.y = y + self.translation.y;
+                        mat.x.x = final_angle.cos();
+                        mat.x.y = -final_angle.sin();
+                        mat.y.x = final_angle.sin();
+                        mat.y.y = final_angle.cos();
+                        
+                        let rot_mat = cgmath::Matrix4::from_angle_z(cgmath::Rad(self.rotation));
+                        let scale_mat = cgmath::Matrix4::from_nonuniform_scale(self.scale.x, self.scale.y, 1.);
+                        let translation_mat = cgmath::Matrix4::from_translation(cgmath::vec3(self.translation.x, self.translation.y, 0.));
+
+                        let final_mat = self.projection * rot_mat * scale_mat * translation_mat * mat;
                         let proj: &[f32; 16] = final_mat.as_ref();
                         self.gl.uniform_matrix_4_f32_slice(Some(loc), false, proj);
 
@@ -272,9 +274,6 @@ impl Renderer {
                         self.gl.uniform_3_f32(Some(loc), color.r, color.g, color.b);
 
                         self.gl.draw_arrays(glow::TRIANGLE_FAN, 0, vertex_buffer_data.len() as i32);
-
-                        //self.gl.delete_vertex_array(vertex_array); // clean up
-                        //self.gl.delete_buffer(vertex_buffer);
                     },
                     _ => ()
                 }
@@ -318,6 +317,20 @@ impl Renderer {
         unsafe {
             self.gl.clear_color(color.r, color.g, color.b, color.a);
         }
+    }
+
+    pub fn scale (&mut self, x: f32, y: f32) {
+        self.scale.x += x;
+        self.scale.y += y;
+    }
+
+    pub fn rotate (&mut self, x: f32) {
+        self.rotation += x;
+    }
+
+    pub fn translate (&mut self, x: f32, y: f32) {
+        self.translation.x += x;
+        self.translation.y += y;
     }
 }
 
