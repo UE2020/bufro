@@ -6,7 +6,7 @@ fn main() {
             let event_loop = glutin::event_loop::EventLoop::new();
             let window_builder = glutin::window::WindowBuilder::new()
                 .with_title("Bufro Quickstart")
-                .with_resizable(false)
+                .with_resizable(true)
                 .with_inner_size(glutin::dpi::LogicalSize::new(800., 600.));
             let window = glutin::ContextBuilder::new()
                 .with_vsync(true)
