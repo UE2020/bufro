@@ -84,6 +84,5 @@ fn main() {
                 }
             });
         }
-        ctx.destroy();
     }
 }
