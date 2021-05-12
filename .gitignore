@@ -2,4 +2,6 @@
 target/
 
 # C binaries
-c_examples/quickstart/quickstart
+c_examples/quickstart
+c_examples/alpha
+c_examples/polygon
