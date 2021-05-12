@@ -6,7 +6,7 @@ A C example can be found in c\_examples/quickstart/quickstart.c (using glfw).
 
 ## Roadmap
 
-Mostly unfinished
+Mostly unfinished.
 
 - [x] Transformations (e.g. ctx.rotate)
 - [x] Rectangle fill
