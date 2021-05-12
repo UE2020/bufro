@@ -17,9 +17,7 @@ pub unsafe extern "C" fn bfr_resize(renderer: *mut Renderer, width: i32, height:
 
 #[no_mangle]
 pub unsafe extern "C" fn bfr_destroy(renderer: *mut Renderer) {
-    (*renderer).gl.delete_program((*renderer).program); // TODO: Fix
-    (*renderer).gl.delete_vertex_array((*renderer).vertex_array); // TODO: Fix
-    (*renderer).gl.delete_buffer((*renderer).vertex_buffer); // TODO: Fix
+    (*renderer).clean();
 
     // free renderer
     libc::free(renderer as *mut libc::c_void);
@@ -92,5 +90,10 @@ pub unsafe extern "C" fn bfr_restore(renderer: *mut Renderer) {
 
 #[no_mangle]
 pub unsafe extern "C" fn bfr_reset(renderer: *mut Renderer) {
+    (*renderer).reset();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn bfr_polygon(renderer: *mut Renderer, x: f32, y: f32, r: f32, color: Color) {
     (*renderer).reset();
 }

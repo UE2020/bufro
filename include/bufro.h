@@ -40,6 +40,8 @@ void bfr_destroy(struct Renderer *renderer);
 
 void bfr_flush(struct Renderer *renderer);
 
+void bfr_polygon(struct Renderer *renderer, float x, float y, float r, struct Color color);
+
 void bfr_rect(struct Renderer *renderer,
               float x,
               float y,

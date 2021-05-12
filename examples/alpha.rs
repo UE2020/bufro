@@ -25,11 +25,6 @@ fn main() {
             use glutin::event::{Event, WindowEvent};
             use glutin::event_loop::ControlFlow;
 
-            // animation variables
-            let mut r1 = 0.;
-            let mut r2 = 0.;
-            let mut scale_animation = 0.;
-
             let mut width = 800;
             let mut height = 600;
 
@@ -43,23 +38,12 @@ fn main() {
                         window.window().request_redraw();
                     }
                     Event::RedrawRequested(_) => {
-                        scale_animation += 0.02;
-                        ctx.scale(
-                            (scale_animation as f32).sin() / 4. + 1.,
-                            (scale_animation as f32).sin() / 4. + 1.,
-                        );
+                        ctx.rect(50., 50., 100., 100., 0., Color::from_8(220, 220, 40, 100));
+                        ctx.rect(75., 75., 100., 100., 0., Color::from_8(30, 90, 200, 100));
 
-                        // draw frame
-                        ctx.translate((width / 2) as f32, (height / 2) as f32);
-                        ctx.rotate(r1);
-                        ctx.rect(-50., -50., 100., 100., 0., Color::from_8(220, 220, 40, 255));
-                        ctx.rotate(r2 - r1);
-                        ctx.translate(200., 0.);
-                        ctx.circle(0., 0., 50., Color::from_8(30, 90, 200, 50));
+                        ctx.rect(225., 225., 100., 100., 0., Color::from_8(30, 90, 200, 100));
+                        ctx.rect(200., 200., 100., 100., 0., Color::from_8(220, 220, 40, 100));
 
-                        // update animation variables
-                        r1 += 0.05;
-                        r2 += -0.075;
 
                         ctx.flush();
                         window.swap_buffers().unwrap();

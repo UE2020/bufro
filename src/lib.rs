@@ -34,7 +34,7 @@ impl Color {
 }
 
 /// A renderer command, all commands are rendered upon flush
-pub enum Command {
+enum Command {
     Triangle {
         x: f32,
         y: f32,
@@ -55,6 +55,14 @@ pub enum Command {
         color: Color,
         transform: cgmath::Matrix4<f32>,
     },
+    Polygon {
+        x: f32,
+        y: f32,
+        r: f32,
+        sides: u8,
+        color: Color,
+        transform: cgmath::Matrix4<f32>,
+    }
 }
 
 #[derive(Clone)]
@@ -74,6 +82,7 @@ pub struct Renderer {
     // caching
     vertex_array: u32,
     vertex_buffer: u32,
+    index_buffer: u32,
 
     // matrix
     transform: cgmath::Matrix4<f32>,
@@ -98,8 +107,8 @@ impl Renderer {
                     gl_Position.w = 1.0;
                 }"#,
                 r#"
-                out vec3 color;
-                uniform vec3 col;
+                out vec4 color;
+                uniform vec4 col;
                 void main(){
                     color = col;
                 }"#,
@@ -148,8 +157,14 @@ impl Renderer {
             let vertex_buffer = gl.create_buffer().unwrap();
             gl.bind_buffer(glow::ARRAY_BUFFER, Some(vertex_buffer));
 
+            let index_buffer = gl.create_buffer().unwrap();
+            gl.bind_buffer(glow::ELEMENT_ARRAY_BUFFER, Some(index_buffer));
+
             gl.enable_vertex_attrib_array(0);
             gl.vertex_attrib_pointer_f32(0, 2, glow::FLOAT, false, 0, 0);
+
+            gl.enable(glow::BLEND);
+            gl.blend_func(glow::SRC_ALPHA, glow::ONE_MINUS_SRC_ALPHA);  
 
             Self {
                 gl,
@@ -163,8 +178,10 @@ impl Renderer {
                     0.,
                     1.,
                 ),
+
                 vertex_array,
                 vertex_buffer,
+                index_buffer,
 
                 transform: cgmath::Matrix4::identity(),
                 old_transform: cgmath::Matrix4::identity(),
@@ -229,6 +246,8 @@ impl Renderer {
                             vertices.push(i.sin() * r);
                             i += max / points;
                         }
+                        vertices.push(i.cos() * r);
+                        vertices.push(i.sin() * r);
 
                         let mut vertex_buffer_data = Vec::<u8>::with_capacity(vertices.len() * 4);
                         for float in vertices.iter() {
@@ -255,7 +274,57 @@ impl Renderer {
                         self.gl.uniform_matrix_4_f32_slice(Some(loc), false, proj);
 
                         let loc = &self.gl.get_uniform_location(self.program, "col").unwrap();
-                        self.gl.uniform_3_f32(Some(loc), color.r, color.g, color.b);
+                        self.gl.uniform_4_f32(Some(loc), color.r, color.g, color.b, color.a);
+
+                        self.gl
+                            .draw_arrays(glow::TRIANGLE_FAN, 0, vertices.len() as i32);
+                    }
+                    Command::Polygon {
+                        x,
+                        y,
+                        r,
+                        color,
+                        sides,
+                        transform,
+                    } => {
+                        let max = PI * 2.;
+                        let mut vertices = Vec::with_capacity(max as usize + 1);
+                        let mut i = 0.;
+                        let points = sides as f32;
+                        while i < max {
+                            vertices.push(i.cos() * r);
+                            vertices.push(i.sin() * r);
+                            i += max / points;
+                        }
+                        vertices.push(i.cos() * r);
+                        vertices.push(i.sin() * r);
+
+                        let mut vertex_buffer_data = Vec::<u8>::with_capacity(vertices.len() * 4);
+                        for float in vertices.iter() {
+                            vertex_buffer_data.extend_from_slice(&float.to_le_bytes());
+                        }
+
+                        self.gl.buffer_data_u8_slice(
+                            glow::ARRAY_BUFFER,
+                            vertex_buffer_data.as_ref(),
+                            glow::DYNAMIC_DRAW,
+                        );
+
+                        let loc = &self
+                            .gl
+                            .get_uniform_location(self.program, "transform")
+                            .unwrap();
+
+                        let mut mat = cgmath::Matrix4::identity();
+                        mat.w.x = x;
+                        mat.w.y = y;
+
+                        let final_mat = self.projection * transform * mat;
+                        let proj: &[f32; 16] = final_mat.as_ref();
+                        self.gl.uniform_matrix_4_f32_slice(Some(loc), false, proj);
+
+                        let loc = &self.gl.get_uniform_location(self.program, "col").unwrap();
+                        self.gl.uniform_4_f32(Some(loc), color.r, color.g, color.b, color.a);
 
                         self.gl
                             .draw_arrays(glow::TRIANGLE_FAN, 0, vertices.len() as i32);
@@ -298,10 +367,10 @@ impl Renderer {
                         self.gl.uniform_matrix_4_f32_slice(Some(loc), false, proj);
 
                         let loc = &self.gl.get_uniform_location(self.program, "col").unwrap();
-                        self.gl.uniform_3_f32(Some(loc), color.r, color.g, color.b);
+                        self.gl.uniform_4_f32(Some(loc), color.r, color.g, color.b, color.a);
 
                         self.gl
-                            .draw_arrays(glow::TRIANGLE_FAN, 0, vertex_buffer_data.len() as i32);
+                            .draw_arrays(glow::TRIANGLES, 0, vertex_buffer_data.len() as i32);
                     }
                 }
             }
@@ -336,6 +405,17 @@ impl Renderer {
         })
     }
 
+    pub fn polygon(&mut self, x: f32, y: f32, r: f32, sides: u8, color: Color) {
+        self.command_stack.push(Command::Polygon {
+            x,
+            y,
+            r,
+            color,
+            sides,
+            transform: self.transform.clone(),
+        })
+    }
+
     pub fn resize(&mut self, width: i32, height: i32) {
         unsafe {
             let _size = 200.;
@@ -345,7 +425,7 @@ impl Renderer {
         }
     }
 
-    pub fn destroy(self) {
+    pub fn clean(&self) {
         unsafe {
             self.gl.delete_program(self.program); // clean up program
             self.gl.delete_vertex_array(self.vertex_array); // clean up buffers

@@ -55,7 +55,7 @@ fn main() {
                         ctx.rect(-50., -50., 100., 100., 0., Color::from_8(220, 220, 40, 255));
                         ctx.rotate(r2 - r1);
                         ctx.translate(200., 0.);
-                        ctx.circle(0., 0., 50., Color::from_8(30, 90, 200, 50));
+                        ctx.polygon(0., 0., 50., 5, Color::from_8(30, 90, 200, 255));
 
                         // update animation variables
                         r1 += 0.05;
