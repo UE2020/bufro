@@ -52,9 +52,11 @@ fn main() {
                         // draw frame
                         ctx.translate((width / 2) as f32, (height / 2) as f32);
                         ctx.rotate(r1);
+                        ctx.rect(-60., -60., 120., 120., 0., Color::from_8(150, 150, 40, 255));
                         ctx.rect(-50., -50., 100., 100., 0., Color::from_8(220, 220, 40, 255));
                         ctx.rotate(r2 - r1);
                         ctx.translate(200., 0.);
+                        ctx.circle(0., 0., 60., Color::from_8(10, 70, 160, 255));
                         ctx.circle(0., 0., 50., Color::from_8(30, 90, 200, 255));
 
                         // update animation variables
