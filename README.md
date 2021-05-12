@@ -3,7 +3,7 @@
 A vector graphics renderer using OpenGL with a Rust &amp; C API.
 
 A Rust example can be found in examples/quickstart.rs (using glutin).
-A C example can be found in c\_examples/quickstart/quickstart.c (using glfw).
+A C example can be found in c\_examples/quickstart.c (using glfw). Build the C examples by running `make <example>` in the c_examples folder.
 
 ## Roadmap
 

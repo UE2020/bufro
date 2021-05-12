@@ -67,7 +67,7 @@ int main() {
         bfr_rect(surface, -50, -50, 100, 100, 0, bfr_color8(220, 220, 40, 255));
         bfr_rotate(surface, r2 - r1);
         bfr_translate(surface, 200, 0);
-        bfr_polygon(surface, 0, 0, 50, (uint8_t) 5, bfr_color8(30, 90, 200, 255));
+        bfr_polygon(surface, 0, 0, 50, 5, bfr_color8(30, 90, 200, 255));
 
         // update animation variables
         r1 += 0.05;
