@@ -19,11 +19,6 @@ void framebuffer_size_callback(GLFWwindow* window, int _width, int _height) {
     height = _height;
 }
 
-void process_input(GLFWwindow *window) {
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, true);
-}
-
 const void* load_ptrs(const char* s) {
     GLFWglproc ptr = glfwGetProcAddress(s);
     if (ptr == NULL) {
@@ -63,8 +58,6 @@ int main() {
     float scale_animation = 0;
 
     while (!glfwWindowShouldClose(window)) {
-        process_input(window);
-
         scale_animation += 0.02;
         bfr_scale(surface, sin(scale_animation) / 4 + 1, sin(scale_animation) / 4 + 1);
 
@@ -80,7 +73,7 @@ int main() {
         r1 += 0.05;
         r2 += -0.075;
 
-        // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
+        // flush
         bfr_flush(surface);
         glfwSwapBuffers(window);
         glfwPollEvents();

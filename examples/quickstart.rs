@@ -61,6 +61,7 @@ fn main() {
                         r1 += 0.05;
                         r2 += -0.075;
 
+                        // flush
                         ctx.flush();
                         window.swap_buffers().unwrap();
                     }
