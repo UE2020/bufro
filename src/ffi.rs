@@ -85,12 +85,10 @@ pub unsafe extern "C" fn bfr_save(renderer: *mut Renderer) {
     (*renderer).save();
 }
 
-
 #[no_mangle]
 pub unsafe extern "C" fn bfr_restore(renderer: *mut Renderer) {
     (*renderer).restore();
 }
-
 
 #[no_mangle]
 pub unsafe extern "C" fn bfr_reset(renderer: *mut Renderer) {

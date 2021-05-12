@@ -88,5 +88,6 @@ int main() {
 
     // glfw: terminate, clearing all previously allocated GLFW resources.
     glfwTerminate();
+    bfr_destroy(surface);
     return 0;
 }

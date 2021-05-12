@@ -44,10 +44,13 @@ fn main() {
                     }
                     Event::RedrawRequested(_) => {
                         scale_animation += 0.02;
-                        ctx.scale((scale_animation as f32).sin() / 4. + 1., (scale_animation as f32).sin() / 4. + 1.);
+                        ctx.scale(
+                            (scale_animation as f32).sin() / 4. + 1.,
+                            (scale_animation as f32).sin() / 4. + 1.,
+                        );
 
                         // draw frame
-                        ctx.translate((width/2) as f32, (height/2) as f32);
+                        ctx.translate((width / 2) as f32, (height / 2) as f32);
                         ctx.rotate(r1);
                         ctx.rect(-50., -50., 100., 100., 0., Color::from_8(220, 220, 40, 255));
                         ctx.rotate(r2 - r1);
@@ -68,15 +71,13 @@ fn main() {
                             width = physical_size.width;
                             height = physical_size.height;
                         }
-                        WindowEvent::CloseRequested => {
-                            *control_flow = ControlFlow::Exit
-                        }
+                        WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
                         _ => (),
                     },
                     _ => (),
                 }
             });
         }
-    ctx.destroy();
+        ctx.destroy();
     }
 }

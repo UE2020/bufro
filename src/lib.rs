@@ -44,7 +44,7 @@ pub enum Command {
         y: f32,
         r: f32,
         color: Color,
-        transform: cgmath::Matrix4<f32>
+        transform: cgmath::Matrix4<f32>,
     },
     Rectangle {
         x: f32,
@@ -53,16 +53,15 @@ pub enum Command {
         height: f32,
         angle: f32,
         color: Color,
-        transform: cgmath::Matrix4<f32>
+        transform: cgmath::Matrix4<f32>,
     },
 }
-
 
 #[derive(Clone)]
 pub struct Transform {
     rotation: f32,
     translation: cgmath::Vector2<f32>,
-    scale: cgmath::Vector2<f32>
+    scale: cgmath::Vector2<f32>,
 }
 
 /// A basic window-less renderer (though you can always just load the function pointers of a window)
@@ -78,7 +77,7 @@ pub struct Renderer {
 
     // matrix
     transform: cgmath::Matrix4<f32>,
-    old_transform: cgmath::Matrix4<f32>
+    old_transform: cgmath::Matrix4<f32>,
 }
 
 impl Renderer {
@@ -168,7 +167,7 @@ impl Renderer {
                 vertex_buffer,
 
                 transform: cgmath::Matrix4::identity(),
-                old_transform: cgmath::Matrix4::identity()
+                old_transform: cgmath::Matrix4::identity(),
             }
         }
     }
@@ -214,7 +213,13 @@ impl Renderer {
                         self.gl.delete_vertex_array(vertex_array);
                         self.gl.delete_buffer(vertex_buffer);
                     }
-                    Command::Circle { x, y, r, color, transform } => {
+                    Command::Circle {
+                        x,
+                        y,
+                        r,
+                        color,
+                        transform,
+                    } => {
                         let max = PI * 2.;
                         let mut vertices = Vec::with_capacity(max as usize + 1);
                         let mut i = 0.;
@@ -245,8 +250,7 @@ impl Renderer {
                         mat.w.x = x;
                         mat.w.y = y;
 
-                        let final_mat =
-                            self.projection * transform * mat;
+                        let final_mat = self.projection * transform * mat;
                         let proj: &[f32; 16] = final_mat.as_ref();
                         self.gl.uniform_matrix_4_f32_slice(Some(loc), false, proj);
 
@@ -263,7 +267,7 @@ impl Renderer {
                         height,
                         color,
                         angle,
-                        transform
+                        transform,
                     } => {
                         let vertex_buffer_data = [
                             0., 0., width, height, 0., height, //
@@ -289,8 +293,7 @@ impl Renderer {
                         mat.y.x = angle.sin();
                         mat.y.y = angle.cos();
 
-                        let final_mat =
-                            self.projection * transform * mat;
+                        let final_mat = self.projection * transform * mat;
                         let proj: &[f32; 16] = final_mat.as_ref();
                         self.gl.uniform_matrix_4_f32_slice(Some(loc), false, proj);
 
@@ -319,12 +322,18 @@ impl Renderer {
             height,
             color,
             angle,
-            transform: self.transform.clone()
+            transform: self.transform.clone(),
         })
     }
 
     pub fn circle(&mut self, x: f32, y: f32, r: f32, color: Color) {
-        self.command_stack.push(Command::Circle { x, y, r, color, transform: self.transform.clone() })
+        self.command_stack.push(Command::Circle {
+            x,
+            y,
+            r,
+            color,
+            transform: self.transform.clone(),
+        })
     }
 
     pub fn resize(&mut self, width: i32, height: i32) {
@@ -359,11 +368,7 @@ impl Renderer {
     }
 
     pub fn translate(&mut self, x: f32, y: f32) {
-        self.transform = self.transform * cgmath::Matrix4::from_translation(cgmath::vec3(
-            x,
-            y,
-            0.,
-        ));
+        self.transform = self.transform * cgmath::Matrix4::from_translation(cgmath::vec3(x, y, 0.));
     }
 
     pub fn save(&mut self) {
@@ -378,4 +383,3 @@ impl Renderer {
         self.transform = cgmath::Matrix4::identity();
     }
 }
-
