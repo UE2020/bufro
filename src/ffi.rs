@@ -94,6 +94,6 @@ pub unsafe extern "C" fn bfr_reset(renderer: *mut Renderer) {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn bfr_polygon(renderer: *mut Renderer, x: f32, y: f32, r: f32, color: Color) {
-    (*renderer).reset();
+pub unsafe extern "C" fn bfr_polygon(renderer: *mut Renderer, x: f32, y: f32, r: f32, sides: u8, color: Color) {
+    (*renderer).polygon(x, y, r, sides, color);
 }
