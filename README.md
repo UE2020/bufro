@@ -24,7 +24,7 @@ Mostly unfinished.
 
 ## Demo
 
-[![Demo](https://res.cloudinary.com/marcomontalbano/image/upload/v1620821432/video_to_markdown/images/video--2fb2cf0e3ecdf60d7038944e1a9f85e3-c05b58ac6eb4c4700831b2b3070cd403.jpg)](https://raw.githubusercontent.com/UE2020/bufro/main/demo.mp4 "Demo")
+![Image of demo](https://raw.githubusercontent.com/UE2020/bufro/main/demo.gif)
 
 ## Build &amp; Install (C)
 
