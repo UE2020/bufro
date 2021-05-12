@@ -1,2 +1,5 @@
+# Rust binaries
 target/
+
+# C binaries
 c_examples/quickstart/quickstart

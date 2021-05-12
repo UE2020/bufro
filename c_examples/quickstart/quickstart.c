@@ -8,11 +8,15 @@ const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 
 Renderer* surface;
+int width = SCR_WIDTH;
+int height = SCR_HEIGHT;
 
-void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
+void framebuffer_size_callback(GLFWwindow* window, int _width, int _height) {
     // make sure the viewport matches the new window dimensions; note that width and 
     // height will be significantly larger than specified on retina displays.
-    bfr_resize(surface, width, height);
+    bfr_resize(surface, _width, _height);
+    width = _width;
+    height = _height;
 }
 
 void process_input(GLFWwindow *window) {
@@ -52,27 +56,30 @@ int main() {
     // create bufro surface
     surface = bfr_create_surface(load_ptrs);
     bfr_set_clear_color(surface, bfr_colorf(0.2, 0.2, 0.2, 0.2)); // set the bg color
-    
-    int x = 0;
-    float r = 0;
-    float counter = 0;
+
+    // animation variables
+    float r1 = 0;
+    float r2 = 0;
+
+    float scale_animation = 0;
 
     while (!glfwWindowShouldClose(window)) {
-        counter += 0.01;
-        bfr_scale(surface, 2, 2);
-
         process_input(window);
-        r += 0.1;
 
-        bfr_save(surface);
-        bfr_translate(surface, 300 + sin(counter) * 600, 300);
-        bfr_rotate(surface, r);
-        bfr_rect(surface, -50, -50, 100, 100, 0, bfr_color8(100, 100, 100, 1));
-        bfr_restore(surface);
-        
-        bfr_circle(surface, 300 + sin(counter) * 600, 200, 100, bfr_color8(191, 134, 53, 1));
-        bfr_circle(surface, 300 + sin(counter) * 600, 200, 90, bfr_color8(255, 179, 71, 1));
-        x++;
+        scale_animation += 0.02;
+        bfr_scale(surface, sin(scale_animation) / 4 + 1, sin(scale_animation) / 4 + 1);
+
+        // draw frame
+        bfr_translate(surface, width/2, height/2);
+        bfr_rotate(surface, r1);
+        bfr_rect(surface, -50, -50, 100, 100, 0, bfr_color8(230, 230, 20, 255));
+        bfr_rotate(surface, r2 - r1);
+        bfr_translate(surface, 200, 0);
+        bfr_circle(surface, 0, 0, 50, bfr_color8(10, 50, 180, 255));
+
+        // update animation variables
+        r1 += 0.05;
+        r2 += -0.075;
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         bfr_flush(surface);
