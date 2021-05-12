@@ -59,7 +59,7 @@ int main() {
 
     while (!glfwWindowShouldClose(window)) {
         counter += 0.01;
-        bfr_scale(surface, 0.5, 0.5);
+        bfr_scale(surface, 2, 2);
 
         process_input(window);
         r += 0.1;
