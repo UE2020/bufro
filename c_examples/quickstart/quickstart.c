@@ -44,7 +44,7 @@ int main() {
 #endif
 
     // Create glfw window
-    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Bufro Quickstart", NULL, NULL);
     if (window == NULL) {
         puts("Failed to create GLFW window");
         glfwTerminate();
@@ -60,7 +60,6 @@ int main() {
     // animation variables
     float r1 = 0;
     float r2 = 0;
-
     float scale_animation = 0;
 
     while (!glfwWindowShouldClose(window)) {
