@@ -12,11 +12,11 @@ Mostly unfinished.
 - [x] Transformations (e.g. ctx.rotate)
 - [x] Rectangle fill
 - [x] Circle fill
-- [ ] Circle stroke
-- [ ] Rectangle stroke
+- [x] Blending
+- [ ] Strokes
 - [ ] Effects (glow & shadows)
 - [ ] Gradients
-- [ ] Rounded rectangle
+- [ ] Rounded rectangles and polygons
 - [ ] Use Lyon for tesselation
 - [ ] Custom shader language
 - [ ] Web API (using wasm-bindgen)
@@ -24,7 +24,7 @@ Mostly unfinished.
 
 ## Demo
 
-![Image of demo](https://raw.githubusercontent.com/UE2020/bufro/main/demo.gif)
+![Gif showing bufro in action](https://raw.githubusercontent.com/UE2020/bufro/main/demo.gif)
 
 ## Build &amp; Install (C)
 
