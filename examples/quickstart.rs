@@ -1,6 +1,4 @@
-// Just for testing
-mod lib;
-use lib as bufro;
+extern crate bufro;
 
 #[derive(Default)]
 struct Keys {

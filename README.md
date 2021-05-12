@@ -1,8 +1,8 @@
 # bufro
 A vector graphics renderer using OpenGL with a Rust &amp; C API.
 
-A Rust example can be found in src/main.rs (using glutin).
-A C example can be found in c\_examples/quickstart/main.c (using glfw).
+A Rust example can be found in examples/quickstart.rs (using glutin).
+A C example can be found in c\_examples/quickstart/quickstart.c (using glfw).
 
 ## Roadmap
 
