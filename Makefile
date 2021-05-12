@@ -1,7 +1,7 @@
 ffi: include/bufro.h
 	cargo build --release
 
-include/bufro.h: src/lib.rs
+include/bufro.h: src/*.rs
 	cbindgen --config cbindgen.toml --crate bufro --output include/bufro.h
 
 install:
