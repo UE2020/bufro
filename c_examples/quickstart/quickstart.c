@@ -86,8 +86,8 @@ int main() {
         glfwPollEvents();
     }
 
-    // glfw: terminate, clearing all previously allocated GLFW resources.
-    glfwTerminate();
+    // Clean up
     bfr_destroy(surface);
+    glfwTerminate();
     return 0;
 }
