@@ -64,9 +64,11 @@ int main() {
         // draw frame
         bfr_translate(surface, width/2, height/2);
         bfr_rotate(surface, r1);
+        bfr_rect(surface, -60, -60, 120, 120, 0, bfr_color8(150, 150, 40, 255));
         bfr_rect(surface, -50, -50, 100, 100, 0, bfr_color8(220, 220, 40, 255));
         bfr_rotate(surface, r2 - r1);
         bfr_translate(surface, 200, 0);
+        bfr_circle(surface, 0, 0, 60, bfr_color8(10, 70, 160, 255));
         bfr_circle(surface, 0, 0, 50, bfr_color8(30, 90, 200, 255));
 
         // update animation variables
