@@ -25,7 +25,7 @@ sys_includes = []
 includes = []
 no_includes = false
 after_includes = ""
-
+cpp_compat = true
 
 
 
