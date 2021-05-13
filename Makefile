@@ -1,4 +1,4 @@
-target/release/libbufro.so: include/bufro.h
+target/release/libbufro.so: include/bufro.h src/*.rs
 	cargo build --release
 
 include/bufro.h: src/*.rs cbindgen.toml
@@ -7,3 +7,6 @@ include/bufro.h: src/*.rs cbindgen.toml
 install:
 	cp target/release/libbufro.so /usr/lib/libbufro.so
 	cp include/* /usr/include
+
+clean:
+	rm -rf target
