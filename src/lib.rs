@@ -244,7 +244,7 @@ impl Renderer {
                         let mut vertices = Vec::with_capacity(max as usize + 1);
                         let mut i = 0.;
                         let points_calculation = r * 0.64;
-                        let points = if points_calculation > 10. { points_calculation } else { 10. };
+                        let points = if points_calculation > 32. { points_calculation } else { 32. };
                         while i < max {
                             vertices.push(i.cos() * r);
                             vertices.push(i.sin() * r);
