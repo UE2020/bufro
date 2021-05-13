@@ -1,7 +1,7 @@
-ffi: include/bufro.h
+target/release/libbufro.so: include/bufro.h
 	cargo build --release
 
-include/bufro.h: src/*.rs
+include/bufro.h: src/*.rs cbindgen.toml
 	cbindgen --config cbindgen.toml --crate bufro --output include/bufro.h
 
 install:
