@@ -1,4 +1,4 @@
-target/release/libbufro.so: include/bufro.h
+target/release/libbufro.so: include/bufro.h src/*.rs
 	cargo build --release
 
 include/bufro.h: src/*.rs cbindgen.toml
