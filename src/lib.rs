@@ -166,6 +166,9 @@ impl Renderer {
             gl.enable(glow::BLEND);
             gl.blend_func(glow::SRC_ALPHA, glow::ONE_MINUS_SRC_ALPHA);  
 
+            //gl.polygon_mode(glow::FRONT, glow::LINE);
+            //gl.polygon_mode(glow::BACK, glow::LINE);
+
             Self {
                 gl,
                 program,
@@ -240,7 +243,8 @@ impl Renderer {
                         let max = PI * 2.;
                         let mut vertices = Vec::with_capacity(max as usize + 1);
                         let mut i = 0.;
-                        let points = r * 0.64;
+                        let points_calculation = r * 0.64;
+                        let points = if points_calculation > 10. { points_calculation } else { 10. };
                         while i < max {
                             vertices.push(i.cos() * r);
                             vertices.push(i.sin() * r);
@@ -430,6 +434,7 @@ impl Renderer {
             self.gl.delete_program(self.program); // clean up program
             self.gl.delete_vertex_array(self.vertex_array); // clean up buffers
             self.gl.delete_buffer(self.vertex_buffer);
+            self.gl.delete_buffer(self.index_buffer);
         }
     }
 
