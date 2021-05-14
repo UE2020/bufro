@@ -1,6 +1,8 @@
 # bufro
 [![crates.io](https://img.shields.io/crates/v/bufro.svg)](https://crates.io/crates/bufro)
 [![Documentation](https://docs.rs/bufro/badge.svg)](https://docs.rs/bufro)
+
+
 A vector graphics renderer using OpenGL with a Rust &amp; C API.
 
 A Rust example can be found in examples/quickstart.rs (using glutin).
