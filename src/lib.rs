@@ -95,7 +95,7 @@ impl TextRenderer {
             
             
             let mut mat = cgmath::Matrix4::identity();
-            mat.w.y = height as f32 / 4.;
+            //mat.w.y = height as f32 / 4.;
 
             let final_mat = cgmath::ortho(0., width as f32, height as f32, 0., 0., 1.) * mat * cgmath::Matrix4::from_nonuniform_scale(1., -1., 1.);
             let proj: &[f32; 16] = final_mat.as_ref();

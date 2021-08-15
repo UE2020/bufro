@@ -22,7 +22,7 @@ fn main() {
         };
 
         let mut futura = bufro::TextRenderer::new(include_bytes!("FuturaPTMedium.otf").to_vec()).unwrap();
-        let mut times = bufro::TextRenderer::new(include_bytes!("times.ttf").to_vec()).unwrap();
+        let mut times = bufro::TextRenderer::new(include_bytes!("Overpass-Black.ttf").to_vec()).unwrap();
         let demo_text = include_str!("text.txt");
 
         {
@@ -45,8 +45,9 @@ fn main() {
                     }
                     Event::RedrawRequested(_) => {
                         r += 0.1;
-                        ctx.text(demo_text, Color::from_8(0, 255, 0, 255), &mut futura, 0., 0., 20., width as f32 /2.);
-                        ctx.text(demo_text, Color::from_8(0, 0, 0, 255), &mut times, width as f32 /2. + 10., 0., 20., width as f32 /2. - 50.);
+                        //ctx.text(demo_text, Color::from_8(0, 255, 0, 255), &mut futura, 0., 0., 20., width as f32 /2.);
+                        //ctx.text(demo_text, Color::from_8(0, 0, 0, 255), &mut times, width as f32 /2. + 10., 0., 20., width as f32 /2. - 50.);
+                        ctx.text("WinFan dumb", Color::from_8(0, 0, 0, 255), &mut times, 0., 0., 100., width as f32 /2. - 50.);
 
                         ctx.translate((width / 2) as f32, (height / 2) as f32);
                         ctx.rotate(r);
