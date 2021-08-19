@@ -9,6 +9,7 @@ keywords = ["graphics", "canvas", "drawing", "gpu", "opengl"]
 categories = ["graphics"]
 repository = "https://github.com/UE2020/bufro"
 edition = "2018"
+resolver = "2"
 
 [lib]
 crate-type = ["cdylib", "lib"]

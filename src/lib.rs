@@ -25,7 +25,7 @@ impl Vertex {
     fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
         wgpu::VertexBufferLayout {
             array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
-            step_mode: wgpu::InputStepMode::Vertex,
+            step_mode: wgpu::VertexStepMode::Vertex,
             attributes: &[
                 wgpu::VertexAttribute {
                     offset: 0,
@@ -174,6 +174,8 @@ impl Painter {
             )
             .await
             .unwrap();
+        
+        let swapchain_format = surface.get_preferred_format(&adapter).unwrap();
 
         let mut config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
@@ -184,12 +186,11 @@ impl Painter {
         };
         surface.configure(&device, &config);
 
-
         let uniform_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 entries: &[wgpu::BindGroupLayoutEntry {
                     binding: 0,
-                    visibility: wgpu::ShaderStage::VERTEX,
+                    visibility: wgpu::ShaderStages::VERTEX,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
@@ -224,12 +225,12 @@ impl Painter {
                 module: &shader,
                 entry_point: "main",
                 targets: &[wgpu::ColorTargetState {
-                    format: sc_desc.format,
+                    format: config.format,
                     blend: Some(wgpu::BlendState {
                         color: wgpu::BlendComponent::REPLACE,
                         alpha: wgpu::BlendComponent::REPLACE,
                     }),
-                    write_mask: wgpu::ColorWrite::ALL,
+                    write_mask: wgpu::ColorWrites::ALL,
                 }],
             }),
             primitive: wgpu::PrimitiveState {
@@ -296,7 +297,7 @@ impl Painter {
             self.size = new_size;
             self.surface_config.width = new_size.width;
             self.surface_config.height = new_size.height;
-            self.swap_chain = self.surface.configure(&self.device, &self.config);
+            self.surface.configure(&self.device, &self.surface_config);
         }
     }
 
@@ -311,7 +312,7 @@ impl Painter {
         let uniform_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Uniform Buffer"),
             contents: bytemuck::cast_slice(&[uniforms]),
-            usage: wgpu::BufferUsage::UNIFORM,
+            usage: wgpu::BufferUsages::UNIFORM,
         });
 
         let uniform_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -370,12 +371,12 @@ impl Painter {
                 let vertex_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                     label: Some("Vertex Buffer"),
                     contents: bytemuck::cast_slice(&geometry.vertices),
-                    usage: wgpu::BufferUsage::VERTEX,
+                    usage: wgpu::BufferUsages::VERTEX,
                 });
                 let index_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                     label: Some("Index Buffer"),
                     contents: bytemuck::cast_slice(&geometry.indices),
-                    usage: wgpu::BufferUsage::INDEX,
+                    usage: wgpu::BufferUsages::INDEX,
                 });
                 
                 self.geometry_buffers.insert(uniq, GeometryBuffer {
@@ -405,7 +406,7 @@ impl Painter {
         let uniform_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Uniform Buffer"),
             contents: bytemuck::cast_slice(&[uniforms]),
-            usage: wgpu::BufferUsage::UNIFORM,
+            usage: wgpu::BufferUsages::UNIFORM,
         });
 
         let uniform_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -460,12 +461,12 @@ impl Painter {
                 let vertex_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                     label: Some("Vertex Buffer"),
                     contents: bytemuck::cast_slice(&geometry.vertices),
-                    usage: wgpu::BufferUsage::VERTEX,
+                    usage: wgpu::BufferUsages::VERTEX,
                 });
                 let index_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                     label: Some("Index Buffer"),
                     contents: bytemuck::cast_slice(&geometry.indices),
-                    usage: wgpu::BufferUsage::INDEX,
+                    usage: wgpu::BufferUsages::INDEX,
                 });
                 
                 self.geometry_buffers.insert(uniq, GeometryBuffer {
@@ -484,8 +485,8 @@ impl Painter {
         }
     }
 
-    pub fn flush(&mut self) -> Result<(), wgpu::SwapChainError> {
-        let frame = surface.get_current_frame()?.output;
+    pub fn flush(&mut self) -> Result<(), wgpu::SurfaceError> {
+        let frame = self.surface.get_current_frame()?.output;
         let view = frame
                 .texture
                 .create_view(&wgpu::TextureViewDescriptor::default());
