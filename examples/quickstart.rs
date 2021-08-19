@@ -75,7 +75,7 @@ fn main() {
                         WindowEvent::CloseRequested => {
                             ctx.clean();
                             *control_flow = ControlFlow::Exit
-                        },
+                        }
                         _ => (),
                     },
                     _ => (),

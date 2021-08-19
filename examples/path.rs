@@ -60,13 +60,17 @@ fn main() {
                         ctx.restore();
 
                         let mut path = bufro::Path::new();
-                        path.move_to(0., 0.,);
+                        path.move_to(0., 0.);
                         path.line_to(100., 100.);
                         path.line_to(100., 0.);
                         path.line_to(0., 0.);
                         path.close();
 
-                        ctx.path(path, bufro::GeometryStyle::Fill, Color::from_8(30, 90, 200, 255));
+                        ctx.path(
+                            path,
+                            bufro::GeometryStyle::Fill,
+                            Color::from_8(30, 90, 200, 255),
+                        );
 
                         // update animation variables
                         r1 += 0.05;
@@ -85,7 +89,7 @@ fn main() {
                         WindowEvent::CloseRequested => {
                             ctx.clean();
                             *control_flow = ControlFlow::Exit
-                        },
+                        }
                         _ => (),
                     },
                     _ => (),

@@ -16,11 +16,12 @@ crate-type = ["cdylib", "lib"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-glow = "0.9.0"
-cgmath = "0.18.0"
-libc = "0.2.94"
-owned_ttf_parser = "0.12.0"
+cgmath = "0.18"
+winit = "0.25"
+wgpu = "0.10.1"
+env_logger = "0.9"
+log = "0.4"
+pollster = "0.2"
+bytemuck = { version = "1.4", features = ["derive"] }
 lyon = "0.17.5"
-
-[dev-dependencies]
-glutin = "0.26.0"
+ordered-float = "2.7.0"

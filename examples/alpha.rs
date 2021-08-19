@@ -44,7 +44,6 @@ fn main() {
                         ctx.rect(225., 225., 100., 100., 0., Color::from_8(30, 90, 200, 100));
                         ctx.rect(200., 200., 100., 100., 0., Color::from_8(220, 220, 40, 100));
 
-
                         ctx.flush();
                         window.swap_buffers().unwrap();
                     }
@@ -58,7 +57,7 @@ fn main() {
                         WindowEvent::CloseRequested => {
                             ctx.clean();
                             *control_flow = ControlFlow::Exit
-                        },
+                        }
                         _ => (),
                     },
                     _ => (),
