@@ -1,6 +1,6 @@
 use cgmath::SquareMatrix;
 use lyon::math::point;
-use std::{iter, os::linux::raw};
+use std::{iter};
 use wgpu::util::DeviceExt;
 use std::collections::HashMap;
 use ordered_float::OrderedFloat;
@@ -18,7 +18,7 @@ use log::*;
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 struct Vertex {
     position: [f32; 2],
-    color: [f32; 3],
+    color: [f32; 4],
 }
 
 impl Vertex {
@@ -35,7 +35,7 @@ impl Vertex {
                 wgpu::VertexAttribute {
                     offset: std::mem::size_of::<[f32; 2]>() as wgpu::BufferAddress,
                     shader_location: 1,
-                    format: wgpu::VertexFormat::Float32x3,
+                    format: wgpu::VertexFormat::Float32x4,
                 },
             ],
         }
@@ -129,10 +129,17 @@ struct GeometryBuffer {
     indices: usize,
 }
 
-/// Object that manages the window and GPU resources
-pub struct Painter {
+
+// Represents a drawable surface
+pub struct Surface {
     surface: wgpu::Surface,
     surface_config: wgpu::SurfaceConfiguration,
+    pub size: winit::dpi::PhysicalSize<u32>,
+}
+
+/// Object that manages the window and GPU resources
+pub struct Painter {
+    surface: Surface,
     device: wgpu::Device,
     queue: wgpu::Queue,
     render_pipeline: wgpu::RenderPipeline,
@@ -145,8 +152,9 @@ pub struct Painter {
     old_transform: cgmath::Matrix4<f32>,
     uniform_bind_group_layout: wgpu::BindGroupLayout,
 
-    // window stuff
-    pub size: winit::dpi::PhysicalSize<u32>,
+    clear_color: Color,
+
+    multisampled_framebuffer: wgpu::TextureView,
 }
 
 impl Painter {
@@ -175,7 +183,7 @@ impl Painter {
             .await
             .unwrap();
         
-        let swapchain_format = surface.get_preferred_format(&adapter).unwrap();
+        let swapchain_format = wgpu::TextureFormat::Bgra8Unorm;
 
         let mut config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
@@ -227,8 +235,8 @@ impl Painter {
                 targets: &[wgpu::ColorTargetState {
                     format: config.format,
                     blend: Some(wgpu::BlendState {
-                        color: wgpu::BlendComponent::REPLACE,
-                        alpha: wgpu::BlendComponent::REPLACE,
+                        color: wgpu::BlendComponent::OVER,
+                        alpha: wgpu::BlendComponent::OVER,
                     }),
                     write_mask: wgpu::ColorWrites::ALL,
                 }],
@@ -247,25 +255,56 @@ impl Painter {
             },
             depth_stencil: None,
             multisample: wgpu::MultisampleState {
-                count: 1,
+                count: 4,
                 mask: !0,
                 alpha_to_coverage_enabled: false,
             },
         });
 
+        let multisampled_framebuffer = Self::create_multisampled_framebuffer(&device, &config, 4);
+
         Self {
-            surface: surface,
-            surface_config: config,
+            surface: Surface { surface, surface_config: config, size: size },
             device: device,
             queue: queue,
             render_pipeline,
-            size: size,
             stack: Vec::new(),
             geometry_buffers: HashMap::new(),
             uniform_bind_group_layout,
             transform: cgmath::Matrix4::identity(),
             old_transform: cgmath::Matrix4::identity(),
+            clear_color: Color::from_8(0, 0, 0, 0xff),
+            multisampled_framebuffer
         }
+    }
+
+    fn create_multisampled_framebuffer(
+        device: &wgpu::Device,
+        config: &wgpu::SurfaceConfiguration,
+        sample_count: u32,
+    ) -> wgpu::TextureView {
+        let multisampled_texture_extent = wgpu::Extent3d {
+            width: config.width,
+            height: config.height,
+            depth_or_array_layers: 1,
+        };
+        let multisampled_frame_descriptor = &wgpu::TextureDescriptor {
+            size: multisampled_texture_extent,
+            mip_level_count: 1,
+            sample_count,
+            dimension: wgpu::TextureDimension::D2,
+            format: config.format,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            label: None,
+        };
+
+        device
+            .create_texture(multisampled_frame_descriptor)
+            .create_view(&wgpu::TextureViewDescriptor::default())
+    }
+
+    pub fn set_clear_color(&mut self, color: Color) {
+        self.clear_color = color;
     }
 
     pub fn scale(&mut self, x: f32, y: f32) {
@@ -293,12 +332,18 @@ impl Painter {
     }
 
     pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
-        if new_size.width > 0 && new_size.height > 0 && new_size != self.size {
-            self.size = new_size;
-            self.surface_config.width = new_size.width;
-            self.surface_config.height = new_size.height;
-            self.surface.configure(&self.device, &self.surface_config);
+        if new_size.width > 0 && new_size.height > 0 && new_size != self.surface.size {
+            self.surface.size = new_size;
+            self.surface.surface_config.width = new_size.width;
+            self.surface.surface_config.height = new_size.height;
+            self.multisampled_framebuffer =
+                Self::create_multisampled_framebuffer(&self.device, &self.surface.surface_config, 4);
+            self.surface.surface.configure(&self.device, &self.surface.surface_config);
         }
+    }
+
+    pub fn regen(&mut self) {
+        self.surface.surface.configure(&self.device, &self.surface.surface_config);
     }
 
     pub fn rectangle(&mut self, x: f32, y: f32, width: f32, height: f32, color: Color,) {
@@ -307,7 +352,7 @@ impl Painter {
         use lyon::path::Path;
         use lyon::tessellation::*;
 
-        let uniforms = Uniforms::from_transform(self.transform, self.size.width, self.size.height);
+        let uniforms = Uniforms::from_transform(self.transform, self.surface.size.width, self.surface.size.height);
 
         let uniform_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Uniform Buffer"),
@@ -352,7 +397,6 @@ impl Painter {
                 let mut geometry: VertexBuffers<Vertex, u16> = VertexBuffers::new();
                 let mut tessellator = FillTessellator::new();
                 let raw_color = color.as_array();
-                let raw_color = [raw_color[0], raw_color[1], raw_color[2]];
         
                 {
                     // Compute the tessellation.
@@ -401,7 +445,7 @@ impl Painter {
         use lyon::tessellation::*;
         use lyon::tessellation::geometry_builder::BuffersBuilder;
 
-        let uniforms = Uniforms::from_transform(self.transform, self.size.width, self.size.height);
+        let uniforms = Uniforms::from_transform(self.transform, self.surface.size.width, self.surface.size.height);
 
         let uniform_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Uniform Buffer"),
@@ -435,7 +479,6 @@ impl Painter {
             },
             None => {
                 let raw_color = color.as_array();
-                let raw_color = [raw_color[0], raw_color[1], raw_color[2]];
 
                 let mut geometry: VertexBuffers<Vertex, u16> = VertexBuffers::new();
                 let mut geometry_builder = BuffersBuilder::new(&mut geometry, |vertex: FillVertex| Vertex {
@@ -486,7 +529,7 @@ impl Painter {
     }
 
     pub fn flush(&mut self) -> Result<(), wgpu::SurfaceError> {
-        let frame = self.surface.get_current_frame()?.output;
+        let frame = self.surface.surface.get_current_frame()?.output;
         let view = frame
                 .texture
                 .create_view(&wgpu::TextureViewDescriptor::default());
@@ -501,14 +544,14 @@ impl Painter {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Render Pass"),
                 color_attachments: &[wgpu::RenderPassColorAttachment {
-                    view: &view,
-                    resolve_target: None,
+                    view: &self.multisampled_framebuffer,
+                    resolve_target: Some(&view),
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 0.1,
-                            g: 0.2,
-                            b: 0.3,
-                            a: 1.0,
+                            r: self.clear_color.r.into_inner() as f64,
+                            g: self.clear_color.g.into_inner() as f64,
+                            b: self.clear_color.b.into_inner() as f64,
+                            a: self.clear_color.a.into_inner() as f64,
                         }),
                         store: true,
                     },

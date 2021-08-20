@@ -26,3 +26,4 @@ pollster = "0.2"
 bytemuck = { version = "1.4", features = ["derive"] }
 lyon = "0.17.5"
 ordered-float = "2.7.0"
+slotmap = "1.0.5"

@@ -119,6 +119,7 @@ dependencies = [
  "lyon",
  "ordered-float",
  "pollster",
+ "slotmap",
  "wgpu",
  "winit",
 ]
