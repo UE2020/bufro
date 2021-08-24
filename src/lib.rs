@@ -8,6 +8,7 @@ use wgpu::util::DeviceExt;
 use wgpu_profiler::*;
 
 use winit::window::Window;
+use cgmath::Transform;
 
 #[allow(unused_imports)]
 use log::*;
@@ -222,7 +223,7 @@ enum UniqueGeometry {
         OrderedFloat<f32>,
         Color,
     ),
-    Path(Vec<PathInstruction>, Color),
+    Path(Vec<PathInstruction>, cgmath::Matrix4<OrderedFloat<f32>>,  Color),
 }
 
 #[derive(Debug)]
@@ -256,17 +257,47 @@ enum PathInstruction {
     ),
 }
 
+struct TransformableMatrix(cgmath::Matrix4<f32>);
+
+impl lyon::geom::traits::Transformation<f32> for TransformableMatrix {
+    fn transform_point(&self, p: lyon::geom::Point<f32>) -> lyon::geom::Point<f32> {
+        let res = self.0.transform_point(cgmath::point3(p.x, p.y, 0.0));
+        lyon::geom::point(res.x, res.y)
+    }
+
+    fn transform_vector(&self, v: lyon::geom::Vector<f32>) -> lyon::geom::Vector<f32> {
+        let res = self.0.transform_vector(cgmath::vec3(v.x, v.y, 0.0));
+        lyon::geom::vector(res.x, res.y)
+    }
+}
+
+impl Into<TransformableMatrix> for cgmath::Matrix4<f32> {
+    fn into(self) -> TransformableMatrix {
+        TransformableMatrix(self)
+    }
+}
+
 // Builds a geometry buffer from a path
 pub struct PathBuilder {
-    path: lyon::path::builder::WithSvg<lyon::path::path::Builder>,
+    path: lyon::path::builder::WithSvg<lyon::path::builder::Transformed<lyon::path::path::Builder, TransformableMatrix>>,
     path_instructions: Vec<PathInstruction>,
+    transform: cgmath::Matrix4<f32>,
 }
 
 impl PathBuilder {
     pub fn new() -> Self {
         Self {
-            path: lyon::path::Path::builder().with_svg(),
+            path: lyon::path::Path::builder().with_svg().transformed(cgmath::Matrix4::identity().into()),
             path_instructions: Vec::new(),
+            transform: cgmath::Matrix4::identity(),
+        }
+    }
+
+    pub fn new_with_transform(transform: cgmath::Matrix4<f32>) -> Self {
+        Self {
+            path: lyon::path::Path::builder().with_svg().transformed(transform.into()),
+            path_instructions: Vec::new(),
+            transform: transform,
         }
     }
 
