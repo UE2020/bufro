@@ -14,8 +14,7 @@ fn main() {
     // Since main can't be async, we're going to need to block
     let mut painter = pollster::block_on(bufro::Painter::new_from_window(&window));
     painter.set_clear_color(Color::from_f(0.2, 0.2, 0.2, 1.0)); // set the bg color
-    let font = bufro::Font::new(include_bytes!("times.ttf")).unwrap();
-    let mut animation = 0.;
+    let font = bufro::Font::new(include_bytes!("Roboto-Regular.ttf")).unwrap();
 
     event_loop.run(move |event, _, control_flow| {
         match event {
@@ -36,8 +35,11 @@ fn main() {
                         VirtualKeyCode::Escape => *control_flow = ControlFlow::Exit,
                         VirtualKeyCode::Space => {
                             if let Some(profile_data) = &painter.latest_profiler_results {
-                                wgpu_profiler::chrometrace::write_chrometrace(std::path::Path::new("trace.json"), profile_data)
-                                    .expect("Failed to write trace.json");
+                                wgpu_profiler::chrometrace::write_chrometrace(
+                                    std::path::Path::new("trace.json"),
+                                    profile_data,
+                                )
+                                .expect("Failed to write trace.json");
                             }
                         }
                         _ => {}
@@ -53,16 +55,16 @@ fn main() {
                 }
             }
             Event::RedrawRequested(_) => {
-                painter.translate(animation, 0.);
-                animation += 1.0;
                 painter.rectangle(50., 50., 100., 100., Color::from_8(220, 220, 40, 100));
                 painter.rectangle(75., 75., 100., 100., Color::from_8(30, 90, 200, 100));
 
                 painter.rectangle(225., 225., 100., 100., Color::from_8(30, 90, 200, 100));
                 painter.rectangle(200., 200., 100., 100., Color::from_8(220, 220, 40, 100));
 
-                painter.translate(window.inner_size().width as f32 / 2., window.inner_size().height as f32 / 2.);
-
+                painter.translate(
+                    window.inner_size().width as f32 / 2.,
+                    window.inner_size().height as f32 / 2.,
+                );
 
                 painter.save();
                 painter.translate(-75., 0.);
@@ -89,7 +91,11 @@ fn main() {
                 path.quad_to(100., 100., 0., 200.);
                 path.quad_to(100., 100., 0., 0.);
                 path.close();
-                painter.stroke_path(path, Color::from_8(255, 255, 255, 255));
+                painter.stroke_path(
+                    path,
+                    Color::from_8(255, 255, 255, 255),
+                    bufro::StrokeOptions::default(),
+                );
 
                 painter.translate(600., 0.);
                 let mut path = bufro::PathBuilder::new();
@@ -99,19 +105,37 @@ fn main() {
                 path.curve_to(100., 100., 100., 300., 0., 200.);
                 path.curve_to(100., 100., -100., 100., 0., 0.);
                 path.close();
-                painter.stroke_path(path, Color::from_8(255, 255, 255, 255));
+                painter.stroke_path(
+                    path,
+                    Color::from_8(255, 255, 255, 255),
+                    bufro::StrokeOptions::default(),
+                );
 
                 painter.reset();
-                painter.fill_text(&font, include_str!("text.txt"), 0., 0., Color::from_8(0, 0, 0xFF, 0xFF));
+                painter.fill_text(
+                    &font,
+                    "The quick brown fox jumps over the lazy dog",
+                    0.,
+                    0.,
+                    16.5,
+                    Color::from_8(0xFF, 0xFF, 0xFF, 0xFF),
+                    Some(50)
+                );
 
                 match painter.flush() {
                     Ok(_) => {}
                     // Recreate the swap_chain if lost
-                    Err(wgpu::SurfaceError::Lost) => { painter.clear(); painter.regen() },
+                    Err(wgpu::SurfaceError::Lost) => {
+                        painter.clear();
+                        painter.regen()
+                    }
                     // The system is out of memory, we should probably quit
                     Err(wgpu::SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
                     // All other errors (Outdated, Timeout) should be resolved by the next frame
-                    Err(e) => { painter.clear(); eprintln!("{:?}", e) },
+                    Err(e) => {
+                        painter.clear();
+                        eprintln!("{:?}", e)
+                    }
                 }
             }
             Event::MainEventsCleared => {

@@ -7,8 +7,178 @@ use std::iter;
 use wgpu::util::DeviceExt;
 use wgpu_profiler::*;
 
-use winit::window::Window;
 use cgmath::Transform;
+use winit::window::Window;
+
+//pub use lyon::tessellation::StrokeOptions;
+pub use lyon::tessellation::FillOptions;
+
+#[derive(Copy, Clone, Debug, PartialEq, Hash, Eq)]
+pub enum LineCap {
+    /// The stroke for each sub-path does not extend beyond its two endpoints.
+    /// A zero length sub-path will therefore not have any stroke.
+    Butt,
+    /// At the end of each sub-path, the shape representing the stroke will be
+    /// extended by a rectangle with the same width as the stroke width and
+    /// whose length is half of the stroke width. If a sub-path has zero length,
+    /// then the resulting effect is that the stroke for that sub-path consists
+    /// solely of a square with side length equal to the stroke width, centered
+    /// at the sub-path's point.
+    Square,
+    /// At each end of each sub-path, the shape representing the stroke will be extended
+    /// by a half circle with a radius equal to the stroke width.
+    /// If a sub-path has zero length, then the resulting effect is that the stroke for
+    /// that sub-path consists solely of a full circle centered at the sub-path's point.
+    Round,
+}
+
+impl Into<lyon::tessellation::LineCap> for LineCap {
+    fn into(self) -> lyon::tessellation::LineCap {
+        match self {
+            LineCap::Butt => lyon::tessellation::LineCap::Butt,
+            LineCap::Square => lyon::tessellation::LineCap::Square,
+            LineCap::Round => lyon::tessellation::LineCap::Round,
+        }
+    }
+}
+
+/// Line join as defined by the SVG specification.
+///
+/// See: <https://svgwg.org/specs/strokes/#StrokeLinejoinProperty>
+#[derive(Copy, Clone, Debug, PartialEq, Hash, Eq)]
+pub enum LineJoin {
+    /// A sharp corner is to be used to join path segments.
+    Miter,
+    /// Same as a miter join, but if the miter limit is exceeded,
+    /// the miter is clipped at a miter length equal to the miter limit value
+    /// multiplied by the stroke width.
+    MiterClip,
+    /// A round corner is to be used to join path segments.
+    Round,
+    /// A bevelled corner is to be used to join path segments.
+    /// The bevel shape is a triangle that fills the area between the two stroked
+    /// segments.
+    Bevel,
+}
+
+impl Into<lyon::tessellation::LineJoin> for LineJoin {
+    fn into(self) -> lyon::tessellation::LineJoin {
+        match self {
+            LineJoin::Miter => lyon::tessellation::LineJoin::Miter,
+            LineJoin::MiterClip => lyon::tessellation::LineJoin::MiterClip,
+            LineJoin::Round => lyon::tessellation::LineJoin::Round,
+            LineJoin::Bevel => lyon::tessellation::LineJoin::Bevel,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
+pub struct StrokeOptions {
+    /// What cap to use at the start of each sub-path.
+    ///
+    /// Default value: `LineCap::Butt`.
+    pub start_cap: LineCap,
+
+    /// What cap to use at the end of each sub-path.
+    ///
+    /// Default value: `LineCap::Butt`.
+    pub end_cap: LineCap,
+
+    /// See the SVG specification.
+    ///
+    /// Default value: `LineJoin::Miter`.
+    pub line_join: LineJoin,
+
+    /// Line width
+    ///
+    /// Default value: `StrokeOptions::DEFAULT_LINE_WIDTH`.
+    pub line_width: OrderedFloat<f32>,
+
+    /// See the SVG specification.
+    ///
+    /// Must be greater than or equal to 1.0.
+    /// Default value: `StrokeOptions::DEFAULT_MITER_LIMIT`.
+    pub miter_limit: OrderedFloat<f32>,
+}
+
+impl StrokeOptions {
+    /// Minimum miter limit as defined by the SVG specification.
+    ///
+    /// See [StrokeMiterLimitProperty](https://svgwg.org/specs/strokes/#StrokeMiterlimitProperty)
+    pub const MINIMUM_MITER_LIMIT: OrderedFloat<f32> = OrderedFloat(1.0);
+    /// Default miter limit as defined by the SVG specification.
+    ///
+    /// See [StrokeMiterLimitProperty](https://svgwg.org/specs/strokes/#StrokeMiterlimitProperty)
+    pub const DEFAULT_MITER_LIMIT: OrderedFloat<f32> = OrderedFloat(4.0);
+    pub const DEFAULT_LINE_CAP: LineCap = LineCap::Butt;
+    pub const DEFAULT_LINE_JOIN: LineJoin = LineJoin::Miter;
+    pub const DEFAULT_LINE_WIDTH: OrderedFloat<f32> = OrderedFloat(1.0);
+
+    pub const DEFAULT: Self = StrokeOptions {
+        start_cap: Self::DEFAULT_LINE_CAP,
+        end_cap: Self::DEFAULT_LINE_CAP,
+        line_join: Self::DEFAULT_LINE_JOIN,
+        line_width: Self::DEFAULT_LINE_WIDTH,
+        miter_limit: Self::DEFAULT_MITER_LIMIT,
+    };
+}
+
+impl StrokeOptions {
+    #[inline]
+    pub fn with_line_cap(mut self, cap: LineCap) -> Self {
+        self.start_cap = cap;
+        self.end_cap = cap;
+        self
+    }
+
+    #[inline]
+    pub fn with_start_cap(mut self, cap: LineCap) -> Self {
+        self.start_cap = cap;
+        self
+    }
+
+    #[inline]
+    pub fn with_end_cap(mut self, cap: LineCap) -> Self {
+        self.end_cap = cap;
+        self
+    }
+
+    #[inline]
+    pub fn with_line_join(mut self, join: LineJoin) -> Self {
+        self.line_join = join;
+        self
+    }
+
+    #[inline]
+    pub fn with_line_width(mut self, width: f32) -> Self {
+        self.line_width = OrderedFloat(width);
+        self
+    }
+
+    #[inline]
+    pub fn with_miter_limit(mut self, limit: f32) -> Self {
+        assert!(OrderedFloat(limit) >= Self::MINIMUM_MITER_LIMIT);
+        self.miter_limit = OrderedFloat(limit);
+        self
+    }
+}
+
+impl Default for StrokeOptions {
+    fn default() -> Self {
+        Self::DEFAULT
+    }
+}
+
+impl Into<lyon::tessellation::StrokeOptions> for StrokeOptions {
+    fn into(self) -> lyon::tessellation::StrokeOptions {
+        lyon::tessellation::StrokeOptions::tolerance(0.1)
+            .with_start_cap(self.start_cap.into())
+            .with_end_cap(self.end_cap.into())
+            .with_line_join(self.line_join.into())
+            .with_line_width(self.line_width.into_inner())
+            .with_miter_limit(self.miter_limit.into_inner())
+    }
+}
 
 #[allow(unused_imports)]
 use log::*;
@@ -223,7 +393,8 @@ enum UniqueGeometry {
         OrderedFloat<f32>,
         Color,
     ),
-    Path(Vec<PathInstruction>, cgmath::Matrix4<OrderedFloat<f32>>,  Color),
+    StrokedPath(Vec<PathInstruction>, Color, StrokeOptions),
+    Path(Vec<PathInstruction>, Color),
 }
 
 #[derive(Debug)]
@@ -257,48 +428,46 @@ enum PathInstruction {
     ),
 }
 
-struct TransformableMatrix(cgmath::Matrix4<f32>);
-
-impl lyon::geom::traits::Transformation<f32> for TransformableMatrix {
-    fn transform_point(&self, p: lyon::geom::Point<f32>) -> lyon::geom::Point<f32> {
-        let res = self.0.transform_point(cgmath::point3(p.x, p.y, 0.0));
-        lyon::geom::point(res.x, res.y)
-    }
-
-    fn transform_vector(&self, v: lyon::geom::Vector<f32>) -> lyon::geom::Vector<f32> {
-        let res = self.0.transform_vector(cgmath::vec3(v.x, v.y, 0.0));
-        lyon::geom::vector(res.x, res.y)
-    }
-}
-
-impl Into<TransformableMatrix> for cgmath::Matrix4<f32> {
-    fn into(self) -> TransformableMatrix {
-        TransformableMatrix(self)
-    }
-}
-
 // Builds a geometry buffer from a path
 pub struct PathBuilder {
-    path: lyon::path::builder::WithSvg<lyon::path::builder::Transformed<lyon::path::path::Builder, TransformableMatrix>>,
+    path: lyon::path::builder::WithSvg<lyon::path::path::Builder>,
     path_instructions: Vec<PathInstruction>,
     transform: cgmath::Matrix4<f32>,
+    old_transform: cgmath::Matrix4<f32>,
 }
 
 impl PathBuilder {
     pub fn new() -> Self {
         Self {
-            path: lyon::path::Path::builder().with_svg().transformed(cgmath::Matrix4::identity().into()),
+            path: lyon::path::Path::builder().with_svg(),
             path_instructions: Vec::new(),
             transform: cgmath::Matrix4::identity(),
+            old_transform: cgmath::Matrix4::identity(),
         }
     }
 
-    pub fn new_with_transform(transform: cgmath::Matrix4<f32>) -> Self {
-        Self {
-            path: lyon::path::Path::builder().with_svg().transformed(transform.into()),
-            path_instructions: Vec::new(),
-            transform: transform,
-        }
+    pub fn scale(&mut self, x: f32, y: f32) {
+        self.transform = self.transform * cgmath::Matrix4::from_nonuniform_scale(x, y, 1.);
+    }
+
+    pub fn rotate(&mut self, x: f32) {
+        self.transform = self.transform * cgmath::Matrix4::from_angle_z(cgmath::Rad(x));
+    }
+
+    pub fn translate(&mut self, x: f32, y: f32) {
+        self.transform = self.transform * cgmath::Matrix4::from_translation(cgmath::vec3(x, y, 0.));
+    }
+
+    pub fn save(&mut self) {
+        self.old_transform = self.transform;
+    }
+
+    pub fn restore(&mut self) {
+        self.transform = self.old_transform;
+    }
+
+    pub fn reset(&mut self) {
+        self.transform = cgmath::Matrix4::identity();
     }
 
     /// Closes the path
@@ -309,6 +478,11 @@ impl PathBuilder {
 
     /// Moves the current point to the given point
     pub fn move_to(&mut self, x: f32, y: f32) {
+        let (x, y) = {
+            let point = cgmath::point3(x, y, 0.);
+            let point = self.transform.transform_point(point);
+            (point.x, point.y)
+        };
         self.path.move_to(lyon::math::point(x, y));
         self.path_instructions
             .push(PathInstruction::MoveTo(HashablePoint::new(x, y)));
@@ -316,6 +490,11 @@ impl PathBuilder {
 
     /// Adds line to path
     pub fn line_to(&mut self, x: f32, y: f32) {
+        let (x, y) = {
+            let point = cgmath::point3(x, y, 0.);
+            let point = self.transform.transform_point(point);
+            (point.x, point.y)
+        };
         self.path.line_to(lyon::math::point(x, y));
         self.path_instructions
             .push(PathInstruction::LineTo(HashablePoint::new(x, y)));
@@ -323,6 +502,16 @@ impl PathBuilder {
 
     /// Adds quadriatic bezier to path
     pub fn quad_to(&mut self, x1: f32, y1: f32, x: f32, y: f32) {
+        let (x, y) = {
+            let point = cgmath::point3(x, y, 0.);
+            let point = self.transform.transform_point(point);
+            (point.x, point.y)
+        };
+        let (x1, y1) = {
+            let point = cgmath::point3(x1, y1, 0.);
+            let point = self.transform.transform_point(point);
+            (point.x, point.y)
+        };
         self.path
             .quadratic_bezier_to(lyon::math::point(x1, y1), lyon::math::point(x, y));
         self.path_instructions.push(PathInstruction::QuadTo(
@@ -331,8 +520,18 @@ impl PathBuilder {
         ));
     }
 
-    /// Adds arc to path
+    /*/// Adds arc to path
     pub fn arc(&mut self, x: f32, y: f32, x1: f32, y1: f32, sweep_angle: f32, x_rotation: f32) {
+        let (x, y) = {
+            let point = cgmath::point3(x, y, 0.);
+            let point = self.transform.transform_point(point);
+            (point.x, point.y)
+        };
+        let (x1, y1) = {
+            let point = cgmath::vec3(x1, y1, 0.);
+            let point = self.transform.transform_vector(point);
+            (point.x, point.y)
+        };
         self.path.arc(
             lyon::math::point(x, y),
             lyon::math::vector(x, y),
@@ -345,10 +544,25 @@ impl PathBuilder {
             OrderedFloat(sweep_angle),
             OrderedFloat(x_rotation),
         ));
-    }
+    }*/
 
     /// Adds cubic bezier to path
     pub fn curve_to(&mut self, x1: f32, y1: f32, x2: f32, y2: f32, x: f32, y: f32) {
+        let (x1, y1) = {
+            let point = cgmath::point3(x1, y1, 0.);
+            let point = self.transform.transform_point(point);
+            (point.x, point.y)
+        };
+        let (x2, y2) = {
+            let point = cgmath::point3(x2, y2, 0.);
+            let point = self.transform.transform_point(point);
+            (point.x, point.y)
+        };
+        let (x, y) = {
+            let point = cgmath::point3(x, y, 0.);
+            let point = self.transform.transform_point(point);
+            (point.x, point.y)
+        };
         self.path.cubic_bezier_to(
             lyon::math::point(x1, y1),
             lyon::math::point(x2, y2),
@@ -546,7 +760,7 @@ impl Painter {
 
         let uniform_buffer = UniformBuffer::new(&device, 100, &uniform_bind_group_layout);
 
-        let mut profiler = GpuProfiler::new(4, queue.get_timestamp_period()); // buffer up to 4 frames
+        let profiler = GpuProfiler::new(4, queue.get_timestamp_period()); // buffer up to 4 frames
 
         Self {
             surface: Surface {
@@ -624,30 +838,78 @@ impl Painter {
         self.transform = cgmath::Matrix4::identity();
     }
 
-    pub fn fill_text(&mut self, font: &Font, text: &str, x: f32, y: f32, color: Color) {
+    pub fn fill_text(&mut self, font: &Font, text: &str, x: f32, y: f32, size: f32, color: Color, wrap_limit: Option<usize>) {
+        match wrap_limit {
+            Some(limit) => assert_ne!(limit, 0),
+            None => ()
+        }
         let face = font.font.as_face_ref();
-        let old_transform = self.transform;
-        self.translate(x, 50.);
-        self.scale(0.005, 0.005);
-        let mut offset = 0.;
-
+        let default_scale = (face.units_per_em().unwrap() as f32).recip();
         let mut path = PathBuilder::new();
-        let glyph = face.as_face_ref().glyph_index('A').unwrap();
-        face.outline_glyph(glyph, &mut path);
-
-        for character in text.chars() {
+        let bbox = face.global_bounding_box();
+        let line_height = (bbox.y_min + bbox.y_max) as f32;
+        let line_height = line_height + (line_height * 0.15);
+        let glyph_width = (bbox.x_min + bbox.x_max) as f32;
+        path.scale(default_scale * size, default_scale * size);
+        path.translate(0., line_height);
+        let mut offset = 0.;
+        for (i, character) in text.chars().enumerate() {
             if character == '\n' {
-                self.translate(-offset, 50./0.005);
+                path.translate(-offset, line_height);
                 offset = 0.;
                 continue;
             }
-            
-            //self.fill_path(&path, color);
-            self.circle(0., 0., 5000., color);
-            offset += face.glyph_hor_advance(glyph).unwrap() as f32;
-            self.translate(face.glyph_hor_advance(glyph).unwrap() as f32, 0.);
+            let glyph = face.as_face_ref().glyph_index(character).unwrap();
+            face.outline_glyph(glyph, &mut path);
+            let advance = face.glyph_hor_advance(glyph).unwrap() as f32;
+            offset += advance;
+            path.translate(advance, 0.);
+            match wrap_limit {
+                Some(limit) => if offset > glyph_width * limit as f32 {
+                    path.translate(-offset, line_height);
+                    offset = 0.;
+                },
+                None => ()
+            }
         }
-        self.transform = old_transform;
+        self.fill_path(path, color);
+    }
+
+    pub fn stroke_text(&mut self, font: &Font, text: &str, x: f32, y: f32, size: f32, color: Color, options: StrokeOptions, wrap_limit: Option<usize>) {
+        match wrap_limit {
+            Some(limit) => assert_ne!(limit, 0),
+            None => ()
+        }
+        let face = font.font.as_face_ref();
+        let default_scale = (face.units_per_em().unwrap() as f32).recip();
+        let mut path = PathBuilder::new();
+        let bbox = face.global_bounding_box();
+        let line_height = (bbox.y_min + bbox.y_max) as f32;
+        let line_height = line_height + (line_height * 0.15);
+        let glyph_width = (bbox.x_min + bbox.x_max) as f32;
+        path.scale(default_scale * size, default_scale * size);
+        path.translate(0., line_height);
+        let mut offset = 0.;
+        for (i, character) in text.chars().enumerate() {
+            if character == '\n' {
+                path.translate(-offset, line_height);
+                offset = 0.;
+                continue;
+            }
+            let glyph = face.as_face_ref().glyph_index(character).unwrap();
+            face.outline_glyph(glyph, &mut path);
+            let advance = face.glyph_hor_advance(glyph).unwrap() as f32;
+            offset += advance;
+            path.translate(advance, 0.);
+            match wrap_limit {
+                Some(limit) => if offset > glyph_width * limit as f32 {
+                    path.translate(-offset, line_height);
+                    offset = 0.;
+                },
+                None => ()
+            }
+        }
+        self.stroke_path(path, color, options);
     }
 
     pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
@@ -673,7 +935,8 @@ impl Painter {
     }
 
     pub fn rectangle(&mut self, x: f32, y: f32, width: f32, height: f32, color: Color) {
-        use lyon::path::Path;
+        use lyon::path::{builder::*, Winding};
+        use lyon::tessellation::geometry_builder::BuffersBuilder;
         use lyon::tessellation::*;
 
         let uniforms = Uniforms::from_transform(
@@ -681,7 +944,6 @@ impl Painter {
             self.surface.size.width,
             self.surface.size.height,
         );
-
         self.uniform_vec
             .extend_from_slice(bytemuck::cast_slice(&[uniforms]));
 
@@ -696,38 +958,28 @@ impl Painter {
             Some(buf) => {
                 self.stack.push(Command::RawGeometry {
                     transform: self.transform.clone(),
-                    indices: buf.indices,
                     uniform_offset: (self.uniform_vec.len() - 1) as wgpu::BufferAddress,
+                    indices: buf.indices,
                     path: uniq,
                 });
             }
             None => {
-                let mut builder = Path::builder();
-                builder.begin(point(x, y));
-                builder.line_to(point(width + x, y));
-                builder.line_to(point(width + x, height + y));
-                builder.line_to(point(x, height + y));
-                builder.line_to(point(x, y));
-                builder.close();
-                let path = builder.build();
-                let options = FillOptions::tolerance(0.1);
-                let mut geometry: VertexBuffers<Vertex, u16> = VertexBuffers::new();
-                let mut tessellator = FillTessellator::new();
                 let raw_color = color.as_array();
 
-                {
-                    // Compute the tessellation.
-                    tessellator
-                        .tessellate_path(
-                            &path,
-                            &options,
-                            &mut BuffersBuilder::new(&mut geometry, |vertex: FillVertex| Vertex {
-                                position: vertex.position().to_array(),
-                                color: raw_color,
-                            }),
-                        )
-                        .unwrap();
-                }
+                let mut geometry: VertexBuffers<Vertex, u16> = VertexBuffers::new();
+                let mut geometry_builder =
+                    BuffersBuilder::new(&mut geometry, |vertex: FillVertex| Vertex {
+                        position: vertex.position().to_array(),
+                        color: raw_color,
+                    });
+                let options = FillOptions::tolerance(0.1);
+                let mut tessellator = FillTessellator::new();
+
+                let mut builder = tessellator.builder(&options, &mut geometry_builder);
+
+                builder.add_rectangle(&lyon::math::rect(x, y, width, height), Winding::Positive);
+
+                builder.build().unwrap();
 
                 let vertex_buffer =
                     self.device
@@ -763,7 +1015,7 @@ impl Painter {
         }
     }
 
-    pub fn stroke_path(&mut self, path_builder: PathBuilder, color: Color) {
+    pub fn stroke_path(&mut self, path_builder: PathBuilder, color: Color, options: StrokeOptions) {
         use lyon::tessellation::*;
 
         let uniforms = Uniforms::from_transform(
@@ -775,7 +1027,7 @@ impl Painter {
         self.uniform_vec
             .extend_from_slice(bytemuck::cast_slice(&[uniforms]));
 
-        let uniq = UniqueGeometry::Path(path_builder.path_instructions, color);
+        let uniq = UniqueGeometry::StrokedPath(path_builder.path_instructions, color, options);
         match self.geometry_buffers.get(&uniq) {
             Some(buf) => {
                 self.stack.push(Command::RawGeometry {
@@ -787,7 +1039,6 @@ impl Painter {
             }
             None => {
                 let path = path_builder.path.build();
-                let options = StrokeOptions::tolerance(0.1).with_line_width(20.);
                 let mut geometry: VertexBuffers<Vertex, u16> = VertexBuffers::new();
                 let mut tessellator = StrokeTessellator::new();
                 let raw_color = color.as_array();
@@ -797,7 +1048,7 @@ impl Painter {
                     tessellator
                         .tessellate_path(
                             &path,
-                            &options,
+                            &options.into(),
                             &mut BuffersBuilder::new(&mut geometry, |vertex: StrokeVertex| {
                                 Vertex {
                                     position: vertex.position().to_array(),
@@ -865,7 +1116,7 @@ impl Painter {
             }
             None => {
                 let path = path_builder.path.build();
-                let options = FillOptions::tolerance(1.0);
+                let options = FillOptions::tolerance(0.1);
                 let mut geometry: VertexBuffers<Vertex, u16> = VertexBuffers::new();
                 let mut tessellator = FillTessellator::new();
                 let raw_color = color.as_array();
@@ -955,7 +1206,7 @@ impl Painter {
                         position: vertex.position().to_array(),
                         color: raw_color,
                     });
-                let options = FillOptions::tolerance(0.1);
+                let options = FillOptions::tolerance(0.5);
                 let mut tessellator = FillTessellator::new();
 
                 let mut builder = tessellator.builder(&options, &mut geometry_builder);
@@ -1028,55 +1279,67 @@ impl Painter {
         );
 
         {
-            wgpu_profiler!("Render Geometry", &mut self.profiler, &mut encoder, &self.device, {
-                let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                    label: Some("Render Pass"),
-                    color_attachments: &[wgpu::RenderPassColorAttachment {
-                        view: &self.multisampled_framebuffer,
-                        resolve_target: Some(&view),
-                        ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(wgpu::Color {
-                                r: self.clear_color.r.into_inner() as f64,
-                                g: self.clear_color.g.into_inner() as f64,
-                                b: self.clear_color.b.into_inner() as f64,
-                                a: self.clear_color.a.into_inner() as f64,
-                            }),
-                            store: true,
-                        },
-                    }],
-                    depth_stencil_attachment: None,
-                });
-
-                render_pass.set_pipeline(&self.render_pipeline);
-                for (i, command) in self.stack.iter().enumerate() {
-                    wgpu_profiler!(format!("command {}", i).as_str(), &mut self.profiler, &mut render_pass, &self.device, {
-                        match command {
-                            Command::RawGeometry {
-                                path,
-                                transform: _,
-                                indices,
-                                uniform_offset,
-                            } => {
-
-                                render_pass.set_bind_group(
-                                    0,
-                                    &self.uniform_buffer.bind_group,
-                                    &[*uniform_offset as u32 * 256 as u32],
-                                );
-    
-                                let buffers = self.geometry_buffers.get(&path).unwrap();
-    
-                                render_pass.set_vertex_buffer(0, buffers.vertex_buffer.slice(..));
-                                render_pass.set_index_buffer(
-                                    buffers.index_buffer.slice(..),
-                                    wgpu::IndexFormat::Uint16,
-                                );
-                                render_pass.draw_indexed(0..*indices as u32, 0, 0..1);
-                            }
-                        }
+            wgpu_profiler!(
+                "Render Geometry",
+                &mut self.profiler,
+                &mut encoder,
+                &self.device,
+                {
+                    let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                        label: Some("Render Pass"),
+                        color_attachments: &[wgpu::RenderPassColorAttachment {
+                            view: &self.multisampled_framebuffer,
+                            resolve_target: Some(&view),
+                            ops: wgpu::Operations {
+                                load: wgpu::LoadOp::Clear(wgpu::Color {
+                                    r: self.clear_color.r.into_inner() as f64,
+                                    g: self.clear_color.g.into_inner() as f64,
+                                    b: self.clear_color.b.into_inner() as f64,
+                                    a: self.clear_color.a.into_inner() as f64,
+                                }),
+                                store: true,
+                            },
+                        }],
+                        depth_stencil_attachment: None,
                     });
+
+                    render_pass.set_pipeline(&self.render_pipeline);
+                    for (i, command) in self.stack.iter().enumerate() {
+                        wgpu_profiler!(
+                            format!("command {}", i).as_str(),
+                            &mut self.profiler,
+                            &mut render_pass,
+                            &self.device,
+                            {
+                                match command {
+                                    Command::RawGeometry {
+                                        path,
+                                        transform: _,
+                                        indices,
+                                        uniform_offset,
+                                    } => {
+                                        render_pass.set_bind_group(
+                                            0,
+                                            &self.uniform_buffer.bind_group,
+                                            &[*uniform_offset as u32 * 256 as u32],
+                                        );
+
+                                        let buffers = self.geometry_buffers.get(&path).unwrap();
+
+                                        render_pass
+                                            .set_vertex_buffer(0, buffers.vertex_buffer.slice(..));
+                                        render_pass.set_index_buffer(
+                                            buffers.index_buffer.slice(..),
+                                            wgpu::IndexFormat::Uint16,
+                                        );
+                                        render_pass.draw_indexed(0..*indices as u32, 0, 0..1);
+                                    }
+                                }
+                            }
+                        );
+                    }
                 }
-            });
+            );
         }
 
         self.profiler.resolve_queries(&mut encoder);
@@ -1093,8 +1356,7 @@ impl Painter {
         if let Some(results) = self.profiler.process_finished_frame() {
             self.latest_profiler_results = Some(results);
         }
-        console_output(&self.latest_profiler_results);
-        
+        //console_output(&self.latest_profiler_results);
 
         Ok(())
     }
@@ -1105,7 +1367,11 @@ fn scopes_to_console_recursive(results: &[GpuTimerScopeResult], indentation: u32
         if indentation > 0 {
             print!("{:<width$}", "|", width = 4);
         }
-        println!("{:.3}μs - {}", (scope.time.end - scope.time.start) * 1000.0 * 1000.0, scope.label);
+        println!(
+            "{:.3}μs - {}",
+            (scope.time.end - scope.time.start) * 1000.0 * 1000.0,
+            scope.label
+        );
         if !scope.nested_scopes.is_empty() {
             scopes_to_console_recursive(&scope.nested_scopes, indentation + 1);
         }
@@ -1115,7 +1381,9 @@ fn scopes_to_console_recursive(results: &[GpuTimerScopeResult], indentation: u32
 fn console_output(results: &Option<Vec<GpuTimerScopeResult>>) {
     print!("\x1B[2J\x1B[1;1H"); // Clear terminal and put cursor to first row first column
     println!("Welcome to wgpu_profiler demo!");
-    println!("Press space to write out a trace file that can be viewed in chrome's chrome://tracing");
+    println!(
+        "Press space to write out a trace file that can be viewed in chrome's chrome://tracing"
+    );
     println!();
     match results {
         Some(results) => {
