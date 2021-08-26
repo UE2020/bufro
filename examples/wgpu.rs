@@ -5,6 +5,7 @@ use winit::{
 };
 
 use bufro::Color;
+use cgmath::VectorSpace;
 
 fn main() {
     env_logger::init();
@@ -13,10 +14,20 @@ fn main() {
 
     // Since main can't be async, we're going to need to block
     let mut painter = pollster::block_on(bufro::Painter::new_from_window(&window));
-    painter.set_clear_color(Color::from_f(0.2, 0.2, 0.2, 1.0)); // set the bg color
-    let font = bufro::Font::new(include_bytes!("Roboto-Regular.ttf")).unwrap();
+    let font = bufro::Font::new(include_bytes!("FiraMono-Regular.ttf")).unwrap();
+    let mut cursor_position = cgmath::vec2(0.0, 0.0);
+    let mut mouse_down = false;
+
+    let mut canvas_translation = cgmath::vec2(0.0, 0.0);
+    let mut canvas_translation_lerped = cgmath::vec2(0.0, 0.0);
+
+    let mut canvas_scale = cgmath::vec1(1.);
+    let mut canvas_scale_lerped = cgmath::vec1(1.);
+
+    let mut size = winit::dpi::PhysicalSize::new(1, 1);
 
     event_loop.run(move |event, _, control_flow| {
+        let text = include_str!("text.txt");
         match event {
             Event::WindowEvent {
                 ref event,
@@ -24,6 +35,25 @@ fn main() {
             } if window_id == window.id() => {
                 match event {
                     WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
+                    WindowEvent::CursorMoved { position, .. } => {
+                        let rel_x = cursor_position.x - position.x;
+                        let rel_y = cursor_position.y - position.y;
+                        if mouse_down {
+                            canvas_translation.x -= rel_x / canvas_scale_lerped.x as f64;
+                            canvas_translation.y -= rel_y / canvas_scale_lerped.x as f64;
+                        }
+                        cursor_position = cgmath::vec2(position.x, position.y)
+                    }
+                    WindowEvent::MouseInput { state, .. } => match state {
+                        winit::event::ElementState::Pressed => mouse_down = true,
+                        winit::event::ElementState::Released => mouse_down = false,
+                    },
+                    WindowEvent::MouseWheel { delta, .. } => match delta {
+                        winit::event::MouseScrollDelta::LineDelta(x, y) => {
+                            canvas_scale.x += y / 10.;
+                        }
+                        _ => {}
+                    },
                     WindowEvent::KeyboardInput {
                         input:
                             winit::event::KeyboardInput {
@@ -33,39 +63,54 @@ fn main() {
                         ..
                     } => match keycode {
                         VirtualKeyCode::Escape => *control_flow = ControlFlow::Exit,
-                        VirtualKeyCode::Space => {
-                            if let Some(profile_data) = &painter.latest_profiler_results {
-                                wgpu_profiler::chrometrace::write_chrometrace(
-                                    std::path::Path::new("trace.json"),
-                                    profile_data,
-                                )
-                                .expect("Failed to write trace.json");
-                            }
-                        }
+                        VirtualKeyCode::Space => {}
                         _ => {}
                     },
                     WindowEvent::Resized(physical_size) => {
+                        size = *physical_size;
                         painter.resize(*physical_size);
                     }
                     WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
                         // new_inner_size is &mut so w have to dereference it twice
+                        size = **new_inner_size;
                         painter.resize(**new_inner_size);
                     }
                     _ => {}
                 }
             }
             Event::RedrawRequested(_) => {
+                painter.rectangle(
+                    0.,
+                    0.,
+                    size.width as f32,
+                    size.height as f32,
+                    Color::from_f(0.2, 0.2, 0.2, 1.0),
+                );
+                canvas_translation_lerped = canvas_translation_lerped.lerp(canvas_translation, 0.2);
+                canvas_scale_lerped = canvas_scale_lerped.lerp(canvas_scale, 0.2);
+                painter.translate(size.width as f32 / 2., size.height as f32 / 2.);
+                painter.scale(canvas_scale_lerped.x, canvas_scale_lerped.x);
+                painter.translate(
+                    -(size.width as f32) / 2. + canvas_translation_lerped.x as f32,
+                    -(size.height as f32) / 2. + canvas_translation_lerped.y as f32,
+                );
+                /*painter.translate(
+                    canvas_translation_lerped.x as f32 - (cursor_position.x / 2.) as f32,
+                    canvas_translation_lerped.y as f32 - (cursor_position.y / 2.) as f32,
+                );
+                painter.scale(canvas_scale_lerped.x, canvas_scale_lerped.x);
+                painter.translate(
+                    -((cursor_position.x / 2.) as f32),
+                    -((cursor_position.y / 2.) as f32)
+                );*/
                 painter.rectangle(50., 50., 100., 100., Color::from_8(220, 220, 40, 100));
                 painter.rectangle(75., 75., 100., 100., Color::from_8(30, 90, 200, 100));
 
                 painter.rectangle(225., 225., 100., 100., Color::from_8(30, 90, 200, 100));
                 painter.rectangle(200., 200., 100., 100., Color::from_8(220, 220, 40, 100));
 
-                painter.translate(
-                    window.inner_size().width as f32 / 2.,
-                    window.inner_size().height as f32 / 2.,
-                );
-
+                painter.save();
+                painter.translate(500., 500.);
                 painter.save();
                 painter.translate(-75., 0.);
                 painter.circle(0., 0., 100., Color::from_8(0, 0, 255, 100));
@@ -80,10 +125,10 @@ fn main() {
                 painter.translate(0., -75.);
                 painter.circle(0., 0., 100., Color::from_8(255, 0, 0, 100));
                 painter.restore();
+                painter.restore();
 
-                painter.reset();
-
-                painter.translate(400., 400.);
+                painter.save();
+                painter.translate(700., 100.);
                 let mut path = bufro::PathBuilder::new();
                 path.move_to(0., 0.);
                 path.quad_to(100., 100., 200., 0.);
@@ -91,13 +136,16 @@ fn main() {
                 path.quad_to(100., 100., 0., 200.);
                 path.quad_to(100., 100., 0., 0.);
                 path.close();
+                let path = path.build();
+                painter.fill_path(&path, Color::from_8(200, 200, 200, 255));
                 painter.stroke_path(
-                    path,
+                    &path,
                     Color::from_8(255, 255, 255, 255),
-                    bufro::StrokeOptions::default(),
+                    bufro::StrokeOptions::default()
+                        .with_line_width(10.)
+                        .with_line_join(bufro::LineJoin::Round),
                 );
-
-                painter.translate(600., 0.);
+                painter.translate(300., 0.);
                 let mut path = bufro::PathBuilder::new();
                 path.move_to(0., 0.);
                 path.curve_to(100., 100., 100., -100., 200., 0.);
@@ -105,21 +153,25 @@ fn main() {
                 path.curve_to(100., 100., 100., 300., 0., 200.);
                 path.curve_to(100., 100., -100., 100., 0., 0.);
                 path.close();
+                let path = path.build();
+                painter.fill_path(&path, Color::from_8(200, 200, 200, 255));
                 painter.stroke_path(
-                    path,
+                    &path,
                     Color::from_8(255, 255, 255, 255),
-                    bufro::StrokeOptions::default(),
+                    bufro::StrokeOptions::default()
+                        .with_line_width(10.)
+                        .with_line_join(bufro::LineJoin::Round),
                 );
 
-                painter.reset();
+                painter.restore();
                 painter.fill_text(
                     &font,
-                    "The quick brown fox jumps over the lazy dog",
+                    text,
                     0.,
                     0.,
                     16.5,
                     Color::from_8(0xFF, 0xFF, 0xFF, 0xFF),
-                    Some(50)
+                    Some(150),
                 );
 
                 match painter.flush() {
