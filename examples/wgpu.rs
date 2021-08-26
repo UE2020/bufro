@@ -24,10 +24,8 @@ fn main() {
     let mut canvas_scale = cgmath::vec1(1.);
     let mut canvas_scale_lerped = cgmath::vec1(1.);
 
-    let mut size = winit::dpi::PhysicalSize::new(1, 1);
-
     event_loop.run(move |event, _, control_flow| {
-        let text = include_str!("text.txt");
+        let text = "Bufro v0.1.7";
         match event {
             Event::WindowEvent {
                 ref event,
@@ -67,18 +65,17 @@ fn main() {
                         _ => {}
                     },
                     WindowEvent::Resized(physical_size) => {
-                        size = *physical_size;
                         painter.resize(*physical_size);
                     }
                     WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
                         // new_inner_size is &mut so w have to dereference it twice
-                        size = **new_inner_size;
                         painter.resize(**new_inner_size);
                     }
                     _ => {}
                 }
             }
             Event::RedrawRequested(_) => {
+                let size = window.inner_size();
                 painter.rectangle(
                     0.,
                     0.,
