@@ -262,6 +262,7 @@ pub struct Color {
 }
 
 impl Color {
+    /// Creates a new color from the given floating point values. (0-1)
     pub fn from_f(r: f32, g: f32, b: f32, a: f32) -> Self {
         Self {
             r: OrderedFloat(r),
@@ -271,6 +272,7 @@ impl Color {
         }
     }
 
+    /// Creates a new color from the given integer values. (0-255)
     pub fn from_8(r: u8, g: u8, b: u8, a: u8) -> Self {
         Self {
             r: OrderedFloat(r as f32 / 255.),
@@ -280,6 +282,7 @@ impl Color {
         }
     }
 
+    /// Get the color as an array of floats
     pub fn as_array(&self) -> [f32; 4] {
         [
             self.r.into_inner(),
@@ -529,6 +532,7 @@ pub struct PathBuilder {
 }
 
 impl PathBuilder {
+    /// Create a PathBuilder
     pub fn new() -> Self {
         Self {
             path: lyon::path::Path::builder(),
@@ -538,6 +542,7 @@ impl PathBuilder {
         }
     }
 
+    /// Finish the builder and return the path
     pub fn build(self) -> Path {
         Path {
             path: self.path,
@@ -545,26 +550,32 @@ impl PathBuilder {
         }
     }
 
+    /// Scale the path
     pub fn scale(&mut self, x: f32, y: f32) {
         self.transform = self.transform * cgmath::Matrix4::from_nonuniform_scale(x, y, 1.);
     }
 
+    /// Rotate the path
     pub fn rotate(&mut self, x: f32) {
         self.transform = self.transform * cgmath::Matrix4::from_angle_z(cgmath::Rad(x));
     }
 
+    /// Translate the path
     pub fn translate(&mut self, x: f32, y: f32) {
         self.transform = self.transform * cgmath::Matrix4::from_translation(cgmath::vec3(x, y, 0.));
     }
 
+    /// Push a new transformation matrix
     pub fn save(&mut self) {
         self.old_transforms.push(self.transform);
     }
 
+    /// Pop the last transformation matrix
     pub fn restore(&mut self) {
         self.transform = self.old_transforms.pop().unwrap();
     }
 
+    /// Reset the transformation matrix
     pub fn reset(&mut self) {
         self.transform = cgmath::Matrix4::identity();
     }
@@ -676,11 +687,13 @@ impl PathBuilder {
     }
 }
 
+/// A ttf/otf font
 pub struct Font {
     font: owned_ttf_parser::OwnedFace,
 }
 
 impl Font {
+    /// Load a font from the given data
     pub fn new(font: &[u8]) -> Option<Self> {
         let owned_face = owned_ttf_parser::OwnedFace::from_vec(font.to_vec(), 0).ok()?;
 
@@ -788,6 +801,7 @@ pub struct Painter {
 }
 
 impl Painter {
+    /// Create a new painter with the given window
     pub async fn new_from_window(
         window: &impl raw_window_handle::HasRawWindowHandle,
         size: (u32, u32),
@@ -952,30 +966,37 @@ impl Painter {
             .create_view(&wgpu::TextureViewDescriptor::default())
     }
 
+    /// Scale the transform by the given factor.
     pub fn scale(&mut self, x: f32, y: f32) {
         self.transform = self.transform * cgmath::Matrix4::from_nonuniform_scale(x, y, 1.);
     }
 
+    /// Rotate the transform by the given angle.
     pub fn rotate(&mut self, x: f32) {
         self.transform = self.transform * cgmath::Matrix4::from_angle_z(cgmath::Rad(x));
     }
 
+    /// Translate the transform by the given vector.
     pub fn translate(&mut self, x: f32, y: f32) {
         self.transform = self.transform * cgmath::Matrix4::from_translation(cgmath::vec3(x, y, 0.));
     }
 
+    /// Push the current transform onto the stack.
     pub fn save(&mut self) {
         self.old_transforms.push(self.transform);
     }
 
+    /// Pop the current transform from the stack.
     pub fn restore(&mut self) {
         self.transform = self.old_transforms.pop().unwrap();
     }
 
+    /// Reset the transform.
     pub fn reset(&mut self) {
         self.transform = cgmath::Matrix4::identity();
     }
 
+    /// Fill the given text. `wrap_limit` can be used to limit the amount of characters in a line.
     pub fn fill_text(
         &mut self,
         font: &Font,
@@ -1025,6 +1046,7 @@ impl Painter {
         self.fill_path(&path.build(), color);
     }
 
+    /// Stroke the given text. `wrap_limit` can be used to limit the amount of characters in a line.
     pub fn stroke_text(
         &mut self,
         font: &Font,
@@ -1075,6 +1097,7 @@ impl Painter {
         self.stroke_path(&path.build(), color, options);
     }
 
+    /// Resize the canvas.
     pub fn resize(&mut self, new_size: (u32, u32)) {
         if new_size.0 > 0 && new_size.1 > 0 {
             self.surface.size = new_size;
@@ -1097,6 +1120,7 @@ impl Painter {
             .configure(&self.device, &self.surface.surface_config);
     }
 
+    /// Draw a rectangle.
     pub fn rectangle(&mut self, x: f32, y: f32, width: f32, height: f32, color: Color) {
         use lyon::path::{builder::*, Winding};
         use lyon::tessellation::geometry_builder::BuffersBuilder;
@@ -1165,6 +1189,7 @@ impl Painter {
         }
     }
 
+    /// Stroke the given path
     pub fn stroke_path(&mut self, path_builder: &Path, color: Color, options: StrokeOptions) {
         use lyon::tessellation::*;
 
@@ -1231,6 +1256,7 @@ impl Painter {
         }
     }
 
+    /// Fill the given path
     pub fn fill_path(&mut self, path_builder: &Path, color: Color) {
         use lyon::tessellation::*;
 
@@ -1294,6 +1320,7 @@ impl Painter {
         }
     }
 
+    /// Fill a cicle.
     pub fn circle(&mut self, x: f32, y: f32, radius: f32, color: Color) {
         use lyon::path::{builder::*, Winding};
         use lyon::tessellation::geometry_builder::BuffersBuilder;
@@ -1361,6 +1388,7 @@ impl Painter {
         }
     }
 
+    /// Useful for debugging.
     pub fn get_buffer_info(&self) -> String {
         let mut free_backpressure = 0;
         for buf in self.geometry_buffers.free.iter() {
@@ -1376,6 +1404,7 @@ impl Painter {
         format!("Buffers free: {}\nBuffers in use: {}\nFree backpressure: {:.5}%\nUsed pressure: {:.5}%", self.geometry_buffers.free.len(), self.geometry_buffers.in_use.len(), (free_backpressure as f32 / total_backpressure as f32) * 100.0, (used_backpressure as f32 / total_backpressure as f32) * 100.0)
     }
 
+    /// Clear all state & GPU buffers.
     pub fn clear(&mut self) {
         self.stack.clear();
         self.uniform_vec.clear();
@@ -1386,6 +1415,7 @@ impl Painter {
         self.reset();
     }
 
+    /// Flush the current state to the screen.
     pub fn flush(&mut self) -> Result<(), wgpu::SurfaceError> {
         let frame = self.surface.surface.get_current_texture()?;
         let view = frame
