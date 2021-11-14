@@ -120,7 +120,6 @@ dependencies = [
  "libc",
  "log",
  "lyon",
- "mem_align",
  "ordered-float",
  "owned_ttf_parser 0.12.1",
  "pollster",
@@ -824,11 +823,6 @@ name = "maybe-uninit"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "60302e4db3a61da70c0cb7991976248362f30319e88850c487b9b95bbf059e00"
-
-[[package]]
-name = "mem_align"
-version = "0.1.0"
-source = "git+https://github.com/UE2020/mem_align.git?branch=main#39ba08c669b8ee4665c4f204baa534835f95b65d"
 
 [[package]]
 name = "memchr"

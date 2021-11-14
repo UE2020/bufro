@@ -27,7 +27,6 @@ bytemuck = { version = "1.4", features = ["derive"] }
 lyon = "0.17.5"
 ordered-float = "2.7.0"
 owned_ttf_parser = "0.12.1"
-mem_align = { version = "0.1.0", git = "https://github.com/UE2020/mem_align.git", branch = "main" }
 libc = "0.2.101"
 raw-window-handle = "0.3.3"
 rand = "0.8.4"
