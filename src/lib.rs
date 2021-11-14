@@ -12,10 +12,15 @@ use winit::window::Window;
 
 use std::sync::Arc;
 
+pub mod ffi;
+
 //pub use lyon::tessellation::StrokeOptions;
 pub use lyon::tessellation::FillOptions;
 
+pub use wgpu::SurfaceError;
+
 #[derive(Copy, Clone, Debug, PartialEq, Hash, Eq)]
+#[repr(C)]
 pub enum LineCap {
     /// The stroke for each sub-path does not extend beyond its two endpoints.
     /// A zero length sub-path will therefore not have any stroke.
@@ -48,6 +53,7 @@ impl Into<lyon::tessellation::LineCap> for LineCap {
 ///
 /// See: <https://svgwg.org/specs/strokes/#StrokeLinejoinProperty>
 #[derive(Copy, Clone, Debug, PartialEq, Hash, Eq)]
+#[repr(C)]
 pub enum LineJoin {
     /// A sharp corner is to be used to join path segments.
     Miter,
@@ -74,6 +80,7 @@ impl Into<lyon::tessellation::LineJoin> for LineJoin {
     }
 }
 
+#[repr(C)]
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 pub struct StrokeOptions {
     /// What cap to use at the start of each sub-path.
@@ -182,9 +189,6 @@ impl Into<lyon::tessellation::StrokeOptions> for StrokeOptions {
     }
 }
 
-#[allow(unused_imports)]
-use log::*;
-
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 struct Vertex {
@@ -249,8 +253,8 @@ pub const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::new(
 );
 
 /// Represents a color with values from 0-1
-#[derive(Hash, PartialEq, Eq, Clone, Copy, Debug)]
 #[repr(C)]
+#[derive(Hash, PartialEq, Eq, Clone, Copy, Debug)]
 pub struct Color {
     pub r: OrderedFloat<f32>,
     pub g: OrderedFloat<f32>,
@@ -376,6 +380,7 @@ enum Command {
         path: UniqueGeometry,
         uniform_offset: wgpu::BufferAddress,
         indices: usize,
+        vertices: usize,
 
         #[allow(dead_code)]
         transform: cgmath::Matrix4<f32>,
@@ -406,8 +411,9 @@ struct GeometryBuffer {
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
     indices: usize,
-    mem_align_vertex: mem_align::MemAlign<Vertex>,
-    mem_align_index: mem_align::MemAlign<u16>,
+    vertices: usize,
+    vertex_capacity: usize,
+    index_capacity: usize,
 }
 
 impl GeometryBuffer {
@@ -423,32 +429,38 @@ impl GeometryBuffer {
             usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
         });
 
-        let mem_align_vertex = mem_align::MemAlign::<Vertex>::new(vertices.len());
-        let mem_align_index = mem_align::MemAlign::<u16>::new(indices.len());
-
         Self {
             vertex_buffer,
             index_buffer,
             indices: indices.len(),
-            mem_align_vertex,
-            mem_align_index,
+            vertices: vertices.len(),
+            vertex_capacity: vertices.len(),
+            index_capacity: indices.len(),
         }
     }
 
-    fn write(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, vertices: &[Vertex], indices: &[u16]) {
+    fn write(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        vertices: &[Vertex],
+        indices: &[u16],
+    ) {
         self.resize_vertex(device, vertices.len());
         queue.write_buffer(&self.vertex_buffer, 0, bytemuck::cast_slice(vertices));
+        self.vertices = vertices.len();
 
         self.resize_index(device, indices.len());
         queue.write_buffer(&self.index_buffer, 0, bytemuck::cast_slice(indices));
+        self.indices = indices.len();
     }
 
     fn vertex_capacity(&self) -> usize {
-        self.mem_align_vertex.capacity()
+        self.vertex_capacity
     }
 
     fn index_capacity(&self) -> usize {
-        self.mem_align_index.capacity()
+        self.index_capacity
     }
 
     fn resize_vertex(&mut self, device: &wgpu::Device, capacity: usize) {
@@ -456,16 +468,14 @@ impl GeometryBuffer {
             return;
         }
 
-        let mem_align = mem_align::MemAlign::<Vertex>::new(capacity);
-
         let inner = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("vertex buffer"),
-            size: mem_align.byte_size() as wgpu::BufferAddress,
+            size: (capacity * std::mem::size_of::<Vertex>()) as wgpu::BufferAddress,
             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
 
-        self.mem_align_vertex = mem_align;
+        self.vertex_capacity = capacity;
         self.vertex_buffer = inner;
     }
 
@@ -474,16 +484,14 @@ impl GeometryBuffer {
             return;
         }
 
-        let mem_align = mem_align::MemAlign::<u16>::new(capacity);
-
         let inner = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("index buffer"),
-            size: mem_align.byte_size() as wgpu::BufferAddress,
+            size: (capacity * 2) as wgpu::BufferAddress,
             usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
 
-        self.mem_align_index = mem_align;
+        self.index_capacity = capacity;
         self.index_buffer = inner;
     }
 }
@@ -504,12 +512,6 @@ enum PathInstruction {
     LineTo(HashablePoint),
     QuadTo(HashablePoint, HashablePoint),
     CurveTo(HashablePoint, HashablePoint, HashablePoint),
-    Arc(
-        HashablePoint,
-        HashablePoint,
-        OrderedFloat<f32>,
-        OrderedFloat<f32>,
-    ),
 }
 
 #[derive(Clone)]
@@ -581,6 +583,7 @@ impl PathBuilder {
             let point = self.transform.transform_point(point);
             (point.x, point.y)
         };
+        self.path.close();
         self.path.begin(lyon::math::point(x, y));
         self.path_instructions
             .push(PathInstruction::MoveTo(HashablePoint::new(x, y)));
@@ -706,6 +709,7 @@ impl owned_ttf_parser::OutlineBuilder for PathBuilder {
     }
 }
 
+#[derive(Debug)]
 struct GeometryStore {
     in_use: HashMap<UniqueGeometry, GeometryBuffer>,
     free: Vec<GeometryBuffer>,
@@ -719,12 +723,19 @@ impl GeometryStore {
         }
     }
 
-    fn malloc(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, uniq: UniqueGeometry, vertices: &[Vertex], indices: &[u16]) {
+    fn malloc(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        uniq: UniqueGeometry,
+        vertices: &[Vertex],
+        indices: &[u16],
+    ) {
         match self.free.pop() {
             Some(mut buffer) => {
                 buffer.write(device, queue, vertices, indices);
                 self.in_use.insert(uniq, buffer);
-            },
+            }
             None => {
                 let buffer = GeometryBuffer::new(&device, vertices, indices);
                 self.in_use.insert(uniq, buffer);
@@ -753,7 +764,7 @@ impl GeometryStore {
 pub struct Surface {
     surface: wgpu::Surface,
     surface_config: wgpu::SurfaceConfiguration,
-    pub size: winit::dpi::PhysicalSize<u32>,
+    pub size: (u32, u32),
 }
 
 /// Object that manages the window and GPU resources
@@ -778,9 +789,10 @@ pub struct Painter {
 }
 
 impl Painter {
-    pub async fn new_from_window(window: &Window) -> Self {
-        let size = window.inner_size();
-
+    pub async fn new_from_window(
+        window: &impl raw_window_handle::HasRawWindowHandle,
+        size: (u32, u32),
+    ) -> Self {
         let instance = wgpu::Instance::new(wgpu::Backends::all());
         let surface = unsafe { instance.create_surface(window) };
         let adapter = instance
@@ -808,8 +820,8 @@ impl Painter {
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: swapchain_format,
-            width: size.width,
-            height: size.height,
+            width: size.0,
+            height: size.1,
             present_mode: wgpu::PresentMode::Fifo,
         };
         surface.configure(&device, &config);
@@ -985,6 +997,7 @@ impl Painter {
         let line_height = (bbox.y_min + bbox.y_max) as f32;
         let line_height = line_height + face.capital_height().unwrap() as f32;
         let glyph_width = (bbox.x_min + bbox.x_max) as f32;
+        path.translate(x, y);
         path.scale(default_scale * size, default_scale * size);
         path.translate(0., line_height);
         let mut offset = 0.;
@@ -1034,6 +1047,7 @@ impl Painter {
         let line_height = (bbox.y_min + bbox.y_max) as f32;
         let line_height = line_height + face.capital_height().unwrap() as f32;
         let glyph_width = (bbox.x_min + bbox.x_max) as f32;
+        path.translate(x, y);
         path.scale(default_scale * size, default_scale * size);
         path.translate(0., line_height);
         let mut offset = 0.;
@@ -1061,11 +1075,11 @@ impl Painter {
         self.stroke_path(&path.build(), color, options);
     }
 
-    pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
-        if new_size.width > 0 && new_size.height > 0 && new_size != self.surface.size {
+    pub fn resize(&mut self, new_size: (u32, u32)) {
+        if new_size.0 > 0 && new_size.1 > 0 {
             self.surface.size = new_size;
-            self.surface.surface_config.width = new_size.width;
-            self.surface.surface_config.height = new_size.height;
+            self.surface.surface_config.width = new_size.0;
+            self.surface.surface_config.height = new_size.1;
             self.multisampled_framebuffer = Self::create_multisampled_framebuffer(
                 &self.device,
                 &self.surface.surface_config,
@@ -1088,11 +1102,8 @@ impl Painter {
         use lyon::tessellation::geometry_builder::BuffersBuilder;
         use lyon::tessellation::*;
 
-        let uniforms = Uniforms::from_transform(
-            self.transform,
-            self.surface.size.width,
-            self.surface.size.height,
-        );
+        let uniforms =
+            Uniforms::from_transform(self.transform, self.surface.size.0, self.surface.size.1);
         self.uniform_vec
             .extend_from_slice(bytemuck::cast_slice(&[uniforms]));
 
@@ -1110,6 +1121,7 @@ impl Painter {
                     uniform_offset: (self.uniform_vec.len() - 1) as wgpu::BufferAddress,
                     indices: buf.indices,
                     path: uniq,
+                    vertices: buf.vertices,
                 });
             }
             None => {
@@ -1130,13 +1142,24 @@ impl Painter {
 
                 builder.build().unwrap();
 
-                self.geometry_buffers.malloc(&self.device, &self.queue, uniq.clone(), &geometry.vertices, &geometry.indices);
+                while geometry.indices.len() * 2 % 4 != 0 {
+                    geometry.indices.push(0);
+                }
+
+                self.geometry_buffers.malloc(
+                    &self.device,
+                    &self.queue,
+                    uniq.clone(),
+                    &geometry.vertices,
+                    &geometry.indices,
+                );
 
                 self.stack.push(Command::RawGeometry {
                     transform: self.transform.clone(),
                     uniform_offset: (self.uniform_vec.len() - 1) as wgpu::BufferAddress,
                     indices: geometry.indices.len(),
                     path: uniq,
+                    vertices: geometry.vertices.len(),
                 });
             }
         }
@@ -1145,11 +1168,8 @@ impl Painter {
     pub fn stroke_path(&mut self, path_builder: &Path, color: Color, options: StrokeOptions) {
         use lyon::tessellation::*;
 
-        let uniforms = Uniforms::from_transform(
-            self.transform,
-            self.surface.size.width,
-            self.surface.size.height,
-        );
+        let uniforms =
+            Uniforms::from_transform(self.transform, self.surface.size.0, self.surface.size.1);
 
         self.uniform_vec
             .extend_from_slice(bytemuck::cast_slice(&[uniforms]));
@@ -1163,6 +1183,7 @@ impl Painter {
                     indices: buf.indices,
                     uniform_offset: (self.uniform_vec.len() - 1) as wgpu::BufferAddress,
                     path: uniq,
+                    vertices: buf.vertices,
                 });
             }
             None => {
@@ -1187,13 +1208,24 @@ impl Painter {
                         .unwrap();
                 }
 
-                self.geometry_buffers.malloc(&self.device, &self.queue, uniq.clone(), &geometry.vertices, &geometry.indices);
+                while geometry.indices.len() * 2 % 4 != 0 {
+                    geometry.indices.push(0);
+                }
+
+                self.geometry_buffers.malloc(
+                    &self.device,
+                    &self.queue,
+                    uniq.clone(),
+                    &geometry.vertices,
+                    &geometry.indices,
+                );
 
                 self.stack.push(Command::RawGeometry {
                     transform: self.transform.clone(),
                     uniform_offset: (self.uniform_vec.len() - 1) as wgpu::BufferAddress,
                     indices: geometry.indices.len(),
                     path: uniq,
+                    vertices: geometry.vertices.len(),
                 });
             }
         }
@@ -1202,11 +1234,8 @@ impl Painter {
     pub fn fill_path(&mut self, path_builder: &Path, color: Color) {
         use lyon::tessellation::*;
 
-        let uniforms = Uniforms::from_transform(
-            self.transform,
-            self.surface.size.width,
-            self.surface.size.height,
-        );
+        let uniforms =
+            Uniforms::from_transform(self.transform, self.surface.size.0, self.surface.size.1);
         self.uniform_vec
             .extend_from_slice(bytemuck::cast_slice(&[uniforms]));
 
@@ -1218,6 +1247,7 @@ impl Painter {
                     indices: buf.indices,
                     uniform_offset: (self.uniform_vec.len() - 1) as wgpu::BufferAddress,
                     path: uniq,
+                    vertices: buf.vertices,
                 });
             }
             None => {
@@ -1241,13 +1271,24 @@ impl Painter {
                         .unwrap();
                 }
 
-                self.geometry_buffers.malloc(&self.device, &self.queue, uniq.clone(), &geometry.vertices, &geometry.indices);
+                while geometry.indices.len() * 2 % 4 != 0 {
+                    geometry.indices.push(0);
+                }
+
+                self.geometry_buffers.malloc(
+                    &self.device,
+                    &self.queue,
+                    uniq.clone(),
+                    &geometry.vertices,
+                    &geometry.indices,
+                );
 
                 self.stack.push(Command::RawGeometry {
                     transform: self.transform.clone(),
                     uniform_offset: (self.uniform_vec.len() - 1) as wgpu::BufferAddress,
                     indices: geometry.indices.len(),
                     path: uniq,
+                    vertices: geometry.vertices.len(),
                 });
             }
         }
@@ -1258,11 +1299,8 @@ impl Painter {
         use lyon::tessellation::geometry_builder::BuffersBuilder;
         use lyon::tessellation::*;
 
-        let uniforms = Uniforms::from_transform(
-            self.transform,
-            self.surface.size.width,
-            self.surface.size.height,
-        );
+        let uniforms =
+            Uniforms::from_transform(self.transform, self.surface.size.0, self.surface.size.1);
         self.uniform_vec
             .extend_from_slice(bytemuck::cast_slice(&[uniforms]));
 
@@ -1279,6 +1317,7 @@ impl Painter {
                     uniform_offset: (self.uniform_vec.len() - 1) as wgpu::BufferAddress,
                     indices: buf.indices,
                     path: uniq,
+                    vertices: buf.vertices,
                 });
             }
             None => {
@@ -1299,21 +1338,50 @@ impl Painter {
 
                 builder.build().unwrap();
 
-                self.geometry_buffers.malloc(&self.device, &self.queue, uniq.clone(), &geometry.vertices, &geometry.indices);
+                while geometry.indices.len() * 2 % 4 != 0 {
+                    geometry.indices.push(0);
+                }
+
+                self.geometry_buffers.malloc(
+                    &self.device,
+                    &self.queue,
+                    uniq.clone(),
+                    &geometry.vertices,
+                    &geometry.indices,
+                );
 
                 self.stack.push(Command::RawGeometry {
                     transform: self.transform.clone(),
                     uniform_offset: (self.uniform_vec.len() - 1) as wgpu::BufferAddress,
                     indices: geometry.indices.len(),
                     path: uniq,
+                    vertices: geometry.vertices.len(),
                 });
             }
         }
     }
 
+    pub fn get_buffer_info(&self) -> String {
+        let mut free_backpressure = 0;
+        for buf in self.geometry_buffers.free.iter() {
+            free_backpressure += buf.vertices + buf.indices;
+        }
+
+        let mut used_backpressure = 0;
+        for (_, buf) in self.geometry_buffers.in_use.iter() {
+            used_backpressure += buf.vertices + buf.indices;
+        }
+
+        let total_backpressure = free_backpressure + used_backpressure;
+        format!("Buffers free: {}\nBuffers in use: {}\nFree backpressure: {:.5}%\nUsed pressure: {:.5}%", self.geometry_buffers.free.len(), self.geometry_buffers.in_use.len(), (free_backpressure as f32 / total_backpressure as f32) * 100.0, (used_backpressure as f32 / total_backpressure as f32) * 100.0)
+    }
+
     pub fn clear(&mut self) {
         self.stack.clear();
         self.uniform_vec.clear();
+        self.old_transforms.clear();
+
+        self.geometry_buffers = GeometryStore::new();
 
         self.reset();
     }
@@ -1349,7 +1417,12 @@ impl Painter {
                     view: &self.multisampled_framebuffer,
                     resolve_target: Some(&view),
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Load,
+                        load: wgpu::LoadOp::Clear(wgpu::Color {
+                            r: 0.0,
+                            g: 0.0,
+                            b: 0.0,
+                            a: 1.0,
+                        }),
                         store: true,
                     },
                 }],
@@ -1364,6 +1437,7 @@ impl Painter {
                         transform: _,
                         indices,
                         uniform_offset,
+                        vertices,
                     } => {
                         render_pass.set_bind_group(
                             0,
@@ -1373,7 +1447,10 @@ impl Painter {
 
                         let buffers = self.geometry_buffers.in_use.get(&path).unwrap();
                         used.insert(path);
-                        render_pass.set_vertex_buffer(0, buffers.vertex_buffer.slice(..));
+                        render_pass.set_vertex_buffer(
+                            0,
+                            buffers.vertex_buffer.slice(0..(*vertices) as u64),
+                        );
                         render_pass.set_index_buffer(
                             buffers.index_buffer.slice(..),
                             wgpu::IndexFormat::Uint16,

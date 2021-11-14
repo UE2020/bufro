@@ -9,67 +9,299 @@
 #include <stdlib.h>
 
 
-/**
- * A basic window-less renderer (though you can always just load the function pointers of a window)
- */
-typedef struct Renderer Renderer;
+typedef enum BufroLineCap {
+    /**
+     * The stroke for each sub-path does not extend beyond its two endpoints.
+     * A zero length sub-path will therefore not have any stroke.
+     */
+    BufroLineCapButt,
+    /**
+     * At the end of each sub-path, the shape representing the stroke will be
+     * extended by a rectangle with the same width as the stroke width and
+     * whose length is half of the stroke width. If a sub-path has zero length,
+     * then the resulting effect is that the stroke for that sub-path consists
+     * solely of a square with side length equal to the stroke width, centered
+     * at the sub-path's point.
+     */
+    BufroLineCapSquare,
+    /**
+     * At each end of each sub-path, the shape representing the stroke will be extended
+     * by a half circle with a radius equal to the stroke width.
+     * If a sub-path has zero length, then the resulting effect is that the stroke for
+     * that sub-path consists solely of a full circle centered at the sub-path's point.
+     */
+    BufroLineCapRound,
+} BufroLineCap;
 
 /**
- * Represents a color with values from 0-1
+ * Line join as defined by the SVG specification.
+ *
+ * See: <https://svgwg.org/specs/strokes/#StrokeLinejoinProperty>
  */
-typedef struct Color {
+typedef enum BufroLineJoin {
+    /**
+     * A sharp corner is to be used to join path segments.
+     */
+    BufroLineJoinMiter,
+    /**
+     * Same as a miter join, but if the miter limit is exceeded,
+     * the miter is clipped at a miter length equal to the miter limit value
+     * multiplied by the stroke width.
+     */
+    BufroLineJoinMiterClip,
+    /**
+     * A round corner is to be used to join path segments.
+     */
+    BufroLineJoinRound,
+    /**
+     * A bevelled corner is to be used to join path segments.
+     * The bevel shape is a triangle that fills the area between the two stroked
+     * segments.
+     */
+    BufroLineJoinBevel,
+} BufroLineJoin;
+
+typedef enum FlushResult {
+    Timeout,
+    Outdated,
+    Lost,
+    OutOfMemory,
+    Ok,
+} FlushResult;
+
+typedef struct Font Font;
+
+/**
+ * Object that manages the window and GPU resources
+ */
+typedef struct Painter Painter;
+
+typedef struct Path Path;
+
+typedef struct PathBuilder PathBuilder;
+
+typedef struct BufroColor {
     float r;
     float g;
     float b;
     float a;
-} Color;
+} BufroColor;
+
+typedef struct bfr_XlibWindow {
+    unsigned long window;
+    void *display;
+} bfr_XlibWindow;
+
+typedef struct BufroStrokeOptions {
+    /**
+     * What cap to use at the start of each sub-path.
+     *
+     * Default value: `LineCap::Butt`.
+     */
+    enum BufroLineCap start_cap;
+    /**
+     * What cap to use at the end of each sub-path.
+     *
+     * Default value: `LineCap::Butt`.
+     */
+    enum BufroLineCap end_cap;
+    /**
+     * See the SVG specification.
+     *
+     * Default value: `LineJoin::Miter`.
+     */
+    enum BufroLineJoin line_join;
+    /**
+     * Line width
+     *
+     * Default value: `StrokeOptions::DEFAULT_LINE_WIDTH`.
+     */
+    float line_width;
+    /**
+     * See the SVG specification.
+     *
+     * Must be greater than or equal to 1.0.
+     * Default value: `StrokeOptions::DEFAULT_MITER_LIMIT`.
+     */
+    float miter_limit;
+} BufroStrokeOptions;
 
 #ifdef __cplusplus
 extern "C" {
 #endif // __cplusplus
 
-void bfr_circle(struct Renderer *renderer, float x, float y, float r, struct Color color);
+uint8_t bfr_font_from_buffer(const char *data, size_t len, struct Font **ptr);
 
-struct Color bfr_color8(uint8_t r, uint8_t g, uint8_t b, uint8_t a);
+/**
+ * circle on painter
+ */
+void bfr_painter_circle(struct Painter *painter,
+                        float x,
+                        float y,
+                        float radius,
+                        struct BufroColor color);
 
-struct Color bfr_colorf(float r, float g, float b, float a);
+/**
+ * clear painter
+ */
+void bfr_painter_clear(struct Painter *painter);
 
-struct Renderer *bfr_create_surface(const void *(*loader)(const char*));
+/**
+ * fill path on painter
+ */
+void bfr_painter_fill_path(struct Painter *painter,
+                           const struct Path *path,
+                           struct BufroColor color);
 
-void bfr_destroy(struct Renderer *renderer);
+/**
+ * fill text on painter
+ */
+void bfr_painter_fill_text(struct Painter *painter,
+                           const struct Font *font,
+                           const char *text,
+                           float x,
+                           float y,
+                           float size,
+                           struct BufroColor color,
+                           size_t wrap_limit);
 
-void bfr_flush(struct Renderer *renderer);
+/**
+ * flush painter
+ */
+enum FlushResult bfr_painter_flush(struct Painter *painter);
 
-void bfr_polygon(struct Renderer *renderer,
-                 float x,
-                 float y,
-                 float r,
-                 uint8_t sides,
-                 struct Color color);
+struct Painter *bfr_painter_from_xlib_window(struct bfr_XlibWindow handle,
+                                             uint32_t width,
+                                             uint32_t height);
 
-void bfr_rect(struct Renderer *renderer,
-              float x,
-              float y,
-              float width,
-              float height,
-              float angle,
-              struct Color color);
+/**
+ * get buffer info string from painter
+ */
+const char *bfr_painter_get_buffer_info_string(struct Painter *painter);
 
-void bfr_reset(struct Renderer *renderer);
+void bfr_painter_rectangle(struct Painter *painter,
+                           float x,
+                           float y,
+                           float width,
+                           float height,
+                           struct BufroColor color);
 
-void bfr_resize(struct Renderer *renderer, int32_t width, int32_t height);
+/**
+ * regen painter
+ */
+void bfr_painter_regen(struct Painter *painter);
 
-void bfr_restore(struct Renderer *renderer);
+void bfr_painter_resize(struct Painter *painter, uint32_t width, uint32_t height);
 
-void bfr_rotate(struct Renderer *renderer, float x);
+/**
+ * restore painter
+ */
+void bfr_painter_restore(struct Painter *painter);
 
-void bfr_save(struct Renderer *renderer);
+/**
+ * rotate painter
+ */
+void bfr_painter_rotate(struct Painter *painter, float angle);
 
-void bfr_scale(struct Renderer *renderer, float x, float y);
+/**
+ * save painter
+ */
+void bfr_painter_save(struct Painter *painter);
 
-void bfr_set_clear_color(struct Renderer *renderer, struct Color color);
+/**
+ * scale painter
+ */
+void bfr_painter_scale(struct Painter *painter, float x, float y);
 
-void bfr_translate(struct Renderer *renderer, float x, float y);
+/**
+ * stroke path on painter
+ */
+void bfr_painter_stroke_path(struct Painter *painter,
+                             const struct Path *path,
+                             struct BufroColor color,
+                             struct BufroStrokeOptions options);
+
+/**
+ * stroke text on painter
+ */
+void bfr_painter_stroke_text(struct Painter *painter,
+                             const struct Font *font,
+                             const char *text,
+                             float x,
+                             float y,
+                             float size,
+                             struct BufroColor color,
+                             struct BufroStrokeOptions options,
+                             size_t wrap_limit);
+
+/**
+ * translate painter
+ */
+void bfr_painter_translate(struct Painter *painter, float x, float y);
+
+/**
+ * TODO: This is a hack.
+ */
+void bfr_pathbuilder_build(struct PathBuilder *pathbuilder, struct Path **path);
+
+/**
+ * close pathbuilder
+ */
+void bfr_pathbuilder_close(struct PathBuilder *pathbuilder);
+
+/**
+ * curveto pathbuilder
+ */
+void bfr_pathbuilder_curve_to(struct PathBuilder *pathbuilder,
+                              float x1,
+                              float y1,
+                              float x2,
+                              float y2,
+                              float x3,
+                              float y3);
+
+/**
+ * lineto pathbuilder
+ */
+void bfr_pathbuilder_line_to(struct PathBuilder *pathbuilder, float x, float y);
+
+/**
+ * moveto pathbuilder
+ */
+void bfr_pathbuilder_move_to(struct PathBuilder *pathbuilder, float x, float y);
+
+struct PathBuilder *bfr_pathbuilder_new(void);
+
+/**
+ * quadto pathbuilder
+ */
+void bfr_pathbuilder_quad_to(struct PathBuilder *pathbuilder,
+                             float x1,
+                             float y1,
+                             float x2,
+                             float y2);
+
+/**
+ * restore pathbuilder
+ */
+void bfr_pathbuilder_restore(struct PathBuilder *pathbuilder);
+
+/**
+ * rotate pathbuilder
+ */
+void bfr_pathbuilder_rotate(struct PathBuilder *pathbuilder, float angle);
+
+/**
+ * save pathbuilder
+ */
+void bfr_pathbuilder_save(struct PathBuilder *pathbuilder);
+
+void bfr_pathbuilder_scale(struct PathBuilder *pathbuilder, float x, float y);
+
+/**
+ * translate pathbuilder
+ */
+void bfr_pathbuilder_translate(struct PathBuilder *pathbuilder, float x, float y);
 
 #ifdef __cplusplus
 } // extern "C"

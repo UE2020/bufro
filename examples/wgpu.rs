@@ -1,3 +1,4 @@
+use rand::Rng;
 use winit::{
     event::*,
     event_loop::{ControlFlow, EventLoop},
@@ -10,10 +11,13 @@ use cgmath::VectorSpace;
 fn main() {
     env_logger::init();
     let event_loop = EventLoop::new();
-    let window = WindowBuilder::new().build(&event_loop).unwrap();
+    let window = WindowBuilder::new()
+        .with_inner_size(winit::dpi::PhysicalSize::new(500, 500))
+        .build(&event_loop)
+        .unwrap();
 
     // Since main can't be async, we're going to need to block
-    let mut painter = pollster::block_on(bufro::Painter::new_from_window(&window));
+    let mut painter = pollster::block_on(bufro::Painter::new_from_window(&window, (500, 500)));
     let font = bufro::Font::new(include_bytes!("FiraMono-Regular.ttf")).unwrap();
     let mut cursor_position = cgmath::vec2(0.0, 0.0);
     let mut mouse_down = false;
@@ -23,6 +27,12 @@ fn main() {
 
     let mut canvas_scale = cgmath::vec1(1.);
     let mut canvas_scale_lerped = cgmath::vec1(1.);
+
+    let mut frame = 0;
+
+    let mut circles = std::collections::HashMap::new();
+
+    let mut rng = rand::thread_rng();
 
     event_loop.run(move |event, _, control_flow| {
         let text = "Bufro v0.1.7";
@@ -65,16 +75,18 @@ fn main() {
                         _ => {}
                     },
                     WindowEvent::Resized(physical_size) => {
-                        painter.resize(*physical_size);
+                        painter.resize((physical_size.width, physical_size.height));
                     }
                     WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
                         // new_inner_size is &mut so w have to dereference it twice
-                        painter.resize(**new_inner_size);
+                        painter.resize((new_inner_size.width, new_inner_size.height));
                     }
                     _ => {}
                 }
             }
             Event::RedrawRequested(_) => {
+                frame += 1;
+
                 let size = window.inner_size();
                 painter.rectangle(
                     0.,
@@ -161,12 +173,46 @@ fn main() {
                 );
 
                 painter.restore();
+
+                if circles.len() < 100 {
+                    circles.insert(
+                        frame,
+                        (
+                            rng.gen_range(0.0..1000.0),
+                            rng.gen_range(0.0..500.0),
+                            rng.gen_range(10.0..50.0),
+                        ),
+                    );
+                }
+
+                circles.retain(|_, circle| {
+                    painter.save();
+                    painter.translate(circle.0, circle.1);
+                    painter.circle(0.0, 0.0, circle.2 + 5.0, Color::from_8(174, 63, 0, 255));
+                    painter.circle(0.0, 0.0, circle.2, Color::from_8(214, 73, 5, 255));
+                    painter.restore();
+                    circle.1 += 4.5;
+                    if circle.1 > 1000. {
+                        false
+                    } else {
+                        true
+                    }
+                });
+
+                painter.circle(
+                    0.,
+                    0.,
+                    (frame % 60 + 1) as f32,
+                    Color::from_8(255, 255, 255, 255),
+                );
+
+                painter.reset();
                 painter.fill_text(
                     &font,
-                    text,
+                    &painter.get_buffer_info(),
                     0.,
                     0.,
-                    16.5,
+                    15.5,
                     Color::from_8(0xFF, 0xFF, 0xFF, 0xFF),
                     Some(150),
                 );
