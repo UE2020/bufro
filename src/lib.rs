@@ -9,6 +9,8 @@ use wgpu::util::DeviceExt;
 use cgmath::Transform;
 use winit::window::Window;
 
+mod mem_align;
+
 use std::sync::Arc;
 
 pub mod ffi;
