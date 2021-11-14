@@ -140,6 +140,11 @@ struct BufroColor bfr_colorf(float r, float g, float b, float a);
  */
 struct BufroColor bfr_coloru8(uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 
+/**
+ * free font
+ */
+void bfr_font_free(struct BufroFont *font);
+
 uint8_t bfr_font_from_buffer(const char *data, size_t len, struct BufroFont **ptr);
 
 /**

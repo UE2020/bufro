@@ -19,7 +19,7 @@ crate-type = ["cdylib", "lib"]
 [dependencies]
 cgmath = "0.18"
 winit = "0.25"
-wgpu = "0.10.1"
+wgpu = "0.11.0"
 env_logger = "0.9"
 log = "0.4"
 pollster = "0.2"
@@ -28,7 +28,6 @@ lyon = "0.17.5"
 ordered-float = "2.7.0"
 owned_ttf_parser = "0.12.1"
 mem_align = { version = "0.1.0", git = "https://github.com/UE2020/mem_align.git", branch = "main" }
-wgpu-profiler = "0.6.0"
 libc = "0.2.101"
 raw-window-handle = "0.3.3"
 rand = "0.8.4"

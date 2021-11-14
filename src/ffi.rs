@@ -65,6 +65,12 @@ pub unsafe extern "C" fn bfr_font_from_buffer(
     0
 }
 
+/// free font
+#[no_mangle]
+pub unsafe extern "C" fn bfr_font_free(font: *mut BufroFont) {
+    Box::from_raw(font);
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn bfr_painter_resize(
     painter: *mut Painter,

@@ -5,7 +5,6 @@ use owned_ttf_parser::AsFaceRef;
 use std::collections::{HashMap, HashSet};
 use std::iter;
 use wgpu::util::DeviceExt;
-use wgpu_profiler::*;
 
 use cgmath::Transform;
 use winit::window::Window;
@@ -799,6 +798,7 @@ impl Painter {
             .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::default(),
                 compatible_surface: Some(&surface),
+                force_fallback_adapter: false,
             })
             .await
             .unwrap();
@@ -995,7 +995,7 @@ impl Painter {
         let mut path = PathBuilder::new();
         let bbox = face.global_bounding_box();
         let line_height = (bbox.y_min + bbox.y_max) as f32;
-        let line_height = line_height + face.capital_height().unwrap() as f32;
+        let line_height = line_height * 1.2;
         let glyph_width = (bbox.x_min + bbox.x_max) as f32;
         path.translate(x, y);
         path.scale(default_scale * size, default_scale * size);
@@ -1387,7 +1387,7 @@ impl Painter {
     }
 
     pub fn flush(&mut self) -> Result<(), wgpu::SurfaceError> {
-        let frame = self.surface.surface.get_current_frame()?.output;
+        let frame = self.surface.surface.get_current_texture()?;
         let view = frame
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
@@ -1421,7 +1421,7 @@ impl Painter {
                             r: 0.0,
                             g: 0.0,
                             b: 0.0,
-                            a: 1.0,
+                            a: 0.0,
                         }),
                         store: true,
                     },
@@ -1469,39 +1469,10 @@ impl Painter {
         self.geometry_buffers.free_unused(&used);
         self.reset();
         self.stack.clear();
+
+        frame.present();
         //console_output(&self.latest_profiler_results);
 
         Ok(())
-    }
-}
-
-fn scopes_to_console_recursive(results: &[GpuTimerScopeResult], indentation: u32) {
-    for scope in results {
-        if indentation > 0 {
-            print!("{:<width$}", "|", width = 4);
-        }
-        println!(
-            "{:.3}μs - {}",
-            (scope.time.end - scope.time.start) * 1000.0 * 1000.0,
-            scope.label
-        );
-        if !scope.nested_scopes.is_empty() {
-            scopes_to_console_recursive(&scope.nested_scopes, indentation + 1);
-        }
-    }
-}
-
-fn console_output(results: &Option<Vec<GpuTimerScopeResult>>) {
-    print!("\x1B[2J\x1B[1;1H"); // Clear terminal and put cursor to first row first column
-    println!("Welcome to wgpu_profiler demo!");
-    println!(
-        "Press space to write out a trace file that can be viewed in chrome's chrome://tracing"
-    );
-    println!();
-    match results {
-        Some(results) => {
-            scopes_to_console_recursive(&results, 0);
-        }
-        None => println!("No profiling results available yet!"),
     }
 }
