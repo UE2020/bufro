@@ -13,7 +13,7 @@ pub fn page_aligned(size: usize) -> usize {
     round_up(size, 4096)
 }
 ///
-/// `MemAlign` represents metadata for a page alligned allocation. 
+/// `MemAlign` represents metadata for a page alligned allocation.
 ///
 #[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub struct MemAlign<T> {

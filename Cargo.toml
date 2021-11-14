@@ -18,9 +18,7 @@ crate-type = ["cdylib", "lib"]
 
 [dependencies]
 cgmath = "0.18"
-winit = "0.25"
 wgpu = "0.11.0"
-env_logger = "0.9"
 log = "0.4"
 pollster = "0.2"
 bytemuck = { version = "1.4", features = ["derive"] }
@@ -29,4 +27,8 @@ ordered-float = "2.7.0"
 owned_ttf_parser = "0.12.1"
 libc = "0.2.101"
 raw-window-handle = "0.3.3"
+
+[dev-dependencies]
+winit = "0.25"
+env_logger = "0.9"
 rand = "0.8.4"

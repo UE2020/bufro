@@ -4,7 +4,7 @@ use crate::*;
 
 use std::ffi::{CStr, CString};
 
-use libc::{c_ulong, c_char};
+use libc::{c_char, c_ulong};
 
 pub struct BufroFont(Font);
 
@@ -37,7 +37,10 @@ pub unsafe extern "C" fn bfr_painter_from_xlib_window(
     width: u32,
     height: u32,
 ) -> *mut Painter {
-    let painter = Box::new(pollster::block_on(Painter::new_from_window(&handle, (width, height))));
+    let painter = Box::new(pollster::block_on(Painter::new_from_window(
+        &handle,
+        (width, height),
+    )));
     Box::into_raw(painter)
 }
 
@@ -58,7 +61,7 @@ pub unsafe extern "C" fn bfr_font_from_buffer(
     let boxed = Box::new({
         match Font::new(data) {
             Some(font) => BufroFont(font),
-            None => return 1
+            None => return 1,
         }
     });
     *ptr = Box::into_raw(boxed);
@@ -72,11 +75,7 @@ pub unsafe extern "C" fn bfr_font_free(font: *mut BufroFont) {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn bfr_painter_resize(
-    painter: *mut Painter,
-    width: u32,
-    height: u32,
-) {
+pub unsafe extern "C" fn bfr_painter_resize(painter: *mut Painter, width: u32, height: u32) {
     (*painter).resize((width, height));
 }
 
@@ -110,7 +109,11 @@ pub unsafe extern "C" fn bfr_pathbuilder_build(
     path: *mut *mut Path,
 ) {
     let mut builder: MaybeUninit<PathBuilder> = MaybeUninit::uninit().assume_init();
-    std::ptr::copy(pathbuilder, &mut builder as *mut MaybeUninit<PathBuilder> as *mut PathBuilder, 1);
+    std::ptr::copy(
+        pathbuilder,
+        &mut builder as *mut MaybeUninit<PathBuilder> as *mut PathBuilder,
+        1,
+    );
     let builder = builder.assume_init();
     let newpath = Box::new(builder.build());
     *path = Box::into_raw(newpath);
@@ -231,13 +234,20 @@ pub unsafe extern "C" fn bfr_painter_fill_text(
     color: BufroColor,
     wrap_limit: usize,
 ) {
-
     let text = CStr::from_ptr(text);
     let text = text.to_str().unwrap();
-    (*painter).fill_text(&(*font).0, text, x, y, size, std::mem::transmute(color), match wrap_limit {
-        0 => None,
-        _ => Some(wrap_limit),
-    });
+    (*painter).fill_text(
+        &(*font).0,
+        text,
+        x,
+        y,
+        size,
+        std::mem::transmute(color),
+        match wrap_limit {
+            0 => None,
+            _ => Some(wrap_limit),
+        },
+    );
 }
 
 /// stroke text on painter
@@ -255,10 +265,19 @@ pub unsafe extern "C" fn bfr_painter_stroke_text(
 ) {
     let text = CStr::from_ptr(text);
     let text = text.to_str().unwrap();
-    (*painter).stroke_text(&(*font).0, text, x, y, size, std::mem::transmute(color), std::mem::transmute(options), match wrap_limit {
-        0 => None,
-        _ => Some(wrap_limit),
-    });
+    (*painter).stroke_text(
+        &(*font).0,
+        text,
+        x,
+        y,
+        size,
+        std::mem::transmute(color),
+        std::mem::transmute(options),
+        match wrap_limit {
+            0 => None,
+            _ => Some(wrap_limit),
+        },
+    );
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Hash, Eq)]
@@ -344,12 +363,20 @@ pub unsafe extern "C" fn bfr_painter_stroke_path(
     color: BufroColor,
     options: BufroStrokeOptions,
 ) {
-    (*painter).stroke_path(&*path, std::mem::transmute(color), std::mem::transmute(options));
+    (*painter).stroke_path(
+        &*path,
+        std::mem::transmute(color),
+        std::mem::transmute(options),
+    );
 }
 
 /// fill path on painter
 #[no_mangle]
-pub unsafe extern "C" fn bfr_painter_fill_path(painter: *mut Painter, path: *const Path, color: BufroColor) {
+pub unsafe extern "C" fn bfr_painter_fill_path(
+    painter: *mut Painter,
+    path: *const Path,
+    color: BufroColor,
+) {
     (*painter).fill_path(&*path, std::mem::transmute(color));
 }
 
@@ -362,12 +389,14 @@ pub unsafe extern "C" fn bfr_painter_circle(
     radius: f32,
     color: BufroColor,
 ) {
-    (*painter).circle(x, y, radius, std::mem::transmute(color),);
+    (*painter).circle(x, y, radius, std::mem::transmute(color));
 }
 
 /// get buffer info string from painter
 #[no_mangle]
-pub unsafe extern "C" fn bfr_painter_get_buffer_info_string(painter: *mut Painter) -> *const c_char {
+pub unsafe extern "C" fn bfr_painter_get_buffer_info_string(
+    painter: *mut Painter,
+) -> *const c_char {
     let info = (*painter).get_buffer_info();
     CString::new(info).unwrap().into_raw()
 }

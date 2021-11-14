@@ -7,7 +7,6 @@ use std::iter;
 use wgpu::util::DeviceExt;
 
 use cgmath::Transform;
-use winit::window::Window;
 
 mod mem_align;
 
@@ -15,7 +14,6 @@ use std::sync::Arc;
 
 pub mod ffi;
 
-//pub use lyon::tessellation::StrokeOptions;
 pub use lyon::tessellation::FillOptions;
 
 pub use wgpu::SurfaceError;
