@@ -6,14 +6,16 @@ use std::ffi::{CStr, CString};
 
 use libc::{c_ulong, c_char};
 
+pub struct BufroFont(Font);
+
 #[derive(Clone, Copy)]
 #[repr(C)]
-pub struct bfr_XlibWindow {
+pub struct BufroXlibWindow {
     pub window: c_ulong,
     pub display: *mut c_void,
 }
 
-impl Into<raw_window_handle::RawWindowHandle> for bfr_XlibWindow {
+impl Into<raw_window_handle::RawWindowHandle> for BufroXlibWindow {
     fn into(self) -> raw_window_handle::RawWindowHandle {
         raw_window_handle::RawWindowHandle::Xlib(raw_window_handle::unix::XlibHandle {
             window: self.window,
@@ -23,7 +25,7 @@ impl Into<raw_window_handle::RawWindowHandle> for bfr_XlibWindow {
     }
 }
 
-unsafe impl raw_window_handle::HasRawWindowHandle for bfr_XlibWindow {
+unsafe impl raw_window_handle::HasRawWindowHandle for BufroXlibWindow {
     fn raw_window_handle(&self) -> raw_window_handle::RawWindowHandle {
         (*self).into()
     }
@@ -31,7 +33,7 @@ unsafe impl raw_window_handle::HasRawWindowHandle for bfr_XlibWindow {
 
 #[no_mangle]
 pub unsafe extern "C" fn bfr_painter_from_xlib_window(
-    handle: bfr_XlibWindow,
+    handle: BufroXlibWindow,
     width: u32,
     height: u32,
 ) -> *mut Painter {
@@ -39,17 +41,23 @@ pub unsafe extern "C" fn bfr_painter_from_xlib_window(
     Box::into_raw(painter)
 }
 
+/// free painter
+#[no_mangle]
+pub unsafe extern "C" fn bfr_painter_free(painter: *mut Painter) {
+    Box::from_raw(painter);
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn bfr_font_from_buffer(
     data: *const c_char,
     len: usize,
-    ptr: *mut *mut Font,
+    ptr: *mut *mut BufroFont,
 ) -> u8 {
     let data = data as *const u8;
     let data = &*std::ptr::slice_from_raw_parts(data, len);
     let boxed = Box::new({
         match Font::new(data) {
-            Some(font) => font,
+            Some(font) => BufroFont(font),
             None => return 1
         }
     });
@@ -83,6 +91,11 @@ pub unsafe extern "C" fn bfr_pathbuilder_new() -> *mut PathBuilder {
     Box::into_raw(Box::new(PathBuilder::new()))
 }
 
+/// free pathbuilder
+#[no_mangle]
+pub unsafe extern "C" fn bfr_pathbuilder_free(pathbuilder: *mut PathBuilder) {
+    Box::from_raw(pathbuilder);
+}
 
 /// TODO: This is a hack.
 #[no_mangle]
@@ -204,7 +217,7 @@ pub unsafe extern "C" fn bfr_painter_restore(painter: *mut Painter) {
 #[no_mangle]
 pub unsafe extern "C" fn bfr_painter_fill_text(
     painter: *mut Painter,
-    font: *const Font,
+    font: *const BufroFont,
     text: *const c_char,
     x: f32,
     y: f32,
@@ -215,7 +228,7 @@ pub unsafe extern "C" fn bfr_painter_fill_text(
 
     let text = CStr::from_ptr(text);
     let text = text.to_str().unwrap();
-    (*painter).fill_text(&*font, text, x, y, size, std::mem::transmute(color), match wrap_limit {
+    (*painter).fill_text(&(*font).0, text, x, y, size, std::mem::transmute(color), match wrap_limit {
         0 => None,
         _ => Some(wrap_limit),
     });
@@ -225,7 +238,7 @@ pub unsafe extern "C" fn bfr_painter_fill_text(
 #[no_mangle]
 pub unsafe extern "C" fn bfr_painter_stroke_text(
     painter: *mut Painter,
-    font: *const Font,
+    font: *const BufroFont,
     text: *const c_char,
     x: f32,
     y: f32,
@@ -236,7 +249,7 @@ pub unsafe extern "C" fn bfr_painter_stroke_text(
 ) {
     let text = CStr::from_ptr(text);
     let text = text.to_str().unwrap();
-    (*painter).stroke_text(&*font, text, x, y, size, std::mem::transmute(color), std::mem::transmute(options), match wrap_limit {
+    (*painter).stroke_text(&(*font).0, text, x, y, size, std::mem::transmute(color), std::mem::transmute(options), match wrap_limit {
         0 => None,
         _ => Some(wrap_limit),
     });
@@ -361,29 +374,29 @@ pub unsafe extern "C" fn bfr_painter_clear(painter: *mut Painter) {
 
 /// flush painter
 #[no_mangle]
-pub unsafe extern "C" fn bfr_painter_flush(painter: *mut Painter) -> FlushResult {
+pub unsafe extern "C" fn bfr_painter_flush(painter: *mut Painter) -> BufroFlushResult {
     match (*painter).flush() {
-        Ok(()) => FlushResult::Ok,
-        Err(e) => FlushResult::from(e),
+        Ok(()) => BufroFlushResult::BufroFlushResultOk,
+        Err(e) => BufroFlushResult::from(e),
     }
 }
 
 #[repr(C)]
-pub enum FlushResult {
-    Timeout,
-    Outdated,
-    Lost,
-    OutOfMemory,
-    Ok,
+pub enum BufroFlushResult {
+    BufroFlushResultTimeout,
+    BufroFlushResultOutdated,
+    BufroFlushResultLost,
+    BufroFlushResultOutOfMemory,
+    BufroFlushResultOk,
 }
 
-impl From<wgpu::SurfaceError> for FlushResult {
+impl From<wgpu::SurfaceError> for BufroFlushResult {
     fn from(err: wgpu::SurfaceError) -> Self {
         match err {
-            wgpu::SurfaceError::Outdated => FlushResult::Outdated,
-            wgpu::SurfaceError::Lost => FlushResult::Lost,
-            wgpu::SurfaceError::OutOfMemory => FlushResult::OutOfMemory,
-            wgpu::SurfaceError::Timeout => FlushResult::Timeout,
+            wgpu::SurfaceError::Outdated => BufroFlushResult::BufroFlushResultOutdated,
+            wgpu::SurfaceError::Lost => BufroFlushResult::BufroFlushResultLost,
+            wgpu::SurfaceError::OutOfMemory => BufroFlushResult::BufroFlushResultOutOfMemory,
+            wgpu::SurfaceError::Timeout => BufroFlushResult::BufroFlushResultTimeout,
         }
     }
 }
@@ -394,4 +407,21 @@ pub struct BufroColor {
     pub g: f32,
     pub b: f32,
     pub a: f32,
+}
+
+/// bufro color from floats
+#[no_mangle]
+pub unsafe extern "C" fn bfr_colorf(r: f32, g: f32, b: f32, a: f32) -> BufroColor {
+    BufroColor { r, g, b, a }
+}
+
+/// bufro color from u8s
+#[no_mangle]
+pub unsafe extern "C" fn bfr_coloru8(r: u8, g: u8, b: u8, a: u8) -> BufroColor {
+    BufroColor {
+        r: r as f32 / 255.0,
+        g: g as f32 / 255.0,
+        b: b as f32 / 255.0,
+        a: a as f32 / 255.0,
+    }
 }

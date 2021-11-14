@@ -283,10 +283,10 @@ impl Color {
 
     pub fn as_array(&self) -> [f32; 4] {
         [
-            self.r.into_inner().powf(2.2),
-            self.g.into_inner().powf(2.2),
-            self.b.into_inner().powf(2.2),
-            self.a.into_inner().powf(2.2),
+            self.r.into_inner(),
+            self.g.into_inner(),
+            self.b.into_inner(),
+            self.a.into_inner(),
         ]
     }
 }

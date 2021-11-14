@@ -9,6 +9,14 @@
 #include <stdlib.h>
 
 
+typedef enum BufroFlushResult {
+    BufroFlushResultTimeout,
+    BufroFlushResultOutdated,
+    BufroFlushResultLost,
+    BufroFlushResultOutOfMemory,
+    BufroFlushResultOk,
+} BufroFlushResult;
+
 typedef enum BufroLineCap {
     /**
      * The stroke for each sub-path does not extend beyond its two endpoints.
@@ -61,15 +69,7 @@ typedef enum BufroLineJoin {
     BufroLineJoinBevel,
 } BufroLineJoin;
 
-typedef enum FlushResult {
-    Timeout,
-    Outdated,
-    Lost,
-    OutOfMemory,
-    Ok,
-} FlushResult;
-
-typedef struct Font Font;
+typedef struct BufroFont BufroFont;
 
 /**
  * Object that manages the window and GPU resources
@@ -87,10 +87,10 @@ typedef struct BufroColor {
     float a;
 } BufroColor;
 
-typedef struct bfr_XlibWindow {
+typedef struct BufroXlibWindow {
     unsigned long window;
     void *display;
-} bfr_XlibWindow;
+} BufroXlibWindow;
 
 typedef struct BufroStrokeOptions {
     /**
@@ -130,7 +130,17 @@ typedef struct BufroStrokeOptions {
 extern "C" {
 #endif // __cplusplus
 
-uint8_t bfr_font_from_buffer(const char *data, size_t len, struct Font **ptr);
+/**
+ * bufro color from floats
+ */
+struct BufroColor bfr_colorf(float r, float g, float b, float a);
+
+/**
+ * bufro color from u8s
+ */
+struct BufroColor bfr_coloru8(uint8_t r, uint8_t g, uint8_t b, uint8_t a);
+
+uint8_t bfr_font_from_buffer(const char *data, size_t len, struct BufroFont **ptr);
 
 /**
  * circle on painter
@@ -157,7 +167,7 @@ void bfr_painter_fill_path(struct Painter *painter,
  * fill text on painter
  */
 void bfr_painter_fill_text(struct Painter *painter,
-                           const struct Font *font,
+                           const struct BufroFont *font,
                            const char *text,
                            float x,
                            float y,
@@ -168,9 +178,14 @@ void bfr_painter_fill_text(struct Painter *painter,
 /**
  * flush painter
  */
-enum FlushResult bfr_painter_flush(struct Painter *painter);
+enum BufroFlushResult bfr_painter_flush(struct Painter *painter);
 
-struct Painter *bfr_painter_from_xlib_window(struct bfr_XlibWindow handle,
+/**
+ * free painter
+ */
+void bfr_painter_free(struct Painter *painter);
+
+struct Painter *bfr_painter_from_xlib_window(struct BufroXlibWindow handle,
                                              uint32_t width,
                                              uint32_t height);
 
@@ -225,7 +240,7 @@ void bfr_painter_stroke_path(struct Painter *painter,
  * stroke text on painter
  */
 void bfr_painter_stroke_text(struct Painter *painter,
-                             const struct Font *font,
+                             const struct BufroFont *font,
                              const char *text,
                              float x,
                              float y,
@@ -259,6 +274,11 @@ void bfr_pathbuilder_curve_to(struct PathBuilder *pathbuilder,
                               float y2,
                               float x3,
                               float y3);
+
+/**
+ * free pathbuilder
+ */
+void bfr_pathbuilder_free(struct PathBuilder *pathbuilder);
 
 /**
  * lineto pathbuilder
