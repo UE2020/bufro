@@ -15,6 +15,7 @@ A C example can be found in c\_examples/quickstart.c (using glfw). Build the C e
 - [x] Circle fill
 - [x] Blending
 - [X] Strokes
+- [X] Text rendering (stroke & fill)
 - [ ] Effects (glow & shadows)
 - [ ] Gradients
 - [X] Rounded rectangles and polygons
