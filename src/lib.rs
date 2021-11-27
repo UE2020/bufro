@@ -17,6 +17,7 @@ pub mod ffi;
 pub use lyon::tessellation::FillOptions;
 
 pub use wgpu::SurfaceError;
+pub use wgpu::Backends;
 
 #[derive(Copy, Clone, Debug, PartialEq, Hash, Eq)]
 #[repr(C)]
@@ -805,8 +806,9 @@ impl Painter {
     pub async fn new_from_window(
         window: &impl raw_window_handle::HasRawWindowHandle,
         size: (u32, u32),
+        backends: Backends,
     ) -> Self {
-        let instance = wgpu::Instance::new(wgpu::Backends::all());
+        let instance = wgpu::Instance::new(backends);
         let surface = unsafe { instance.create_surface(window) };
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
@@ -1067,7 +1069,7 @@ impl Painter {
         let mut path = PathBuilder::new();
         let bbox = face.global_bounding_box();
         let line_height = (bbox.y_min + bbox.y_max) as f32;
-        let line_height = line_height + face.capital_height().unwrap() as f32;
+        let line_height = line_height * 1.2;
         let glyph_width = (bbox.x_min + bbox.x_max) as f32;
         path.translate(x, y);
         path.scale(default_scale * size, default_scale * size);
@@ -1095,6 +1097,10 @@ impl Painter {
             }
         }
         self.stroke_path(&path.build(), color, options);
+    }
+
+    pub fn measure_text(font: &Font, text: &str, wrap_limit: Option<usize>) {
+        
     }
 
     /// Resize the canvas.

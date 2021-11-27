@@ -174,30 +174,26 @@ fn main() {
 
                 painter.restore();
 
-                if circles.len() < 100 {
+                if circles.len() < 10000 {
                     circles.insert(
                         frame,
                         (
-                            rng.gen_range(0.0..1000.0),
-                            rng.gen_range(0.0..500.0),
+                            rng.gen_range(0.0..10000.0),
+                            rng.gen_range(0.0..10000.0),
                             rng.gen_range(10.0..50.0),
                         ),
                     );
                 }
 
-                circles.retain(|_, circle| {
+                let time_start = std::time::Instant::now();
+                for (_, circle) in circles.iter_mut() {
                     painter.save();
                     painter.translate(circle.0, circle.1);
-                    painter.circle(0.0, 0.0, circle.2 + 5.0, Color::from_8(174, 63, 0, 255));
+                    //painter.circle(0.0, 0.0, circle.2 + 5.0, Color::from_8(174, 63, 0, 255));
                     painter.circle(0.0, 0.0, circle.2, Color::from_8(214, 73, 5, 255));
                     painter.restore();
-                    circle.1 += 4.5;
-                    if circle.1 > 1000. {
-                        false
-                    } else {
-                        true
-                    }
-                });
+                }
+                println!("Elapsed: {:?}", time_start.elapsed());
 
                 painter.circle(
                     0.,

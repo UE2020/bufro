@@ -1,86 +1,86 @@
+use winit::{
+    event::*,
+    event_loop::{ControlFlow, EventLoop},
+    window::WindowBuilder,
+};
+
 use bufro::Color;
 
 fn main() {
-    unsafe {
-        let (mut ctx, window, event_loop) = {
-            let event_loop = glutin::event_loop::EventLoop::new();
-            let window_builder = glutin::window::WindowBuilder::new()
-                .with_title("Bufro Quickstart")
-                .with_resizable(true)
-                .with_inner_size(glutin::dpi::LogicalSize::new(800., 600.));
-            let window = glutin::ContextBuilder::new()
-                .with_vsync(true)
-                .with_multisampling(16)
-                .build_windowed(window_builder, &event_loop)
-                .unwrap()
-                .make_current()
-                .unwrap();
-            let ctx = bufro::Renderer::new(|s| window.get_proc_address(s) as *const _);
-            ctx.set_clear_color(Color::from_f(0.2, 0.2, 0.2, 0.2)); // set the bg color
+    let event_loop = EventLoop::new();
+    let window = WindowBuilder::new()
+        .with_inner_size(winit::dpi::PhysicalSize::new(500, 500))
+        .build(&event_loop)
+        .unwrap();
 
-            (ctx, window, event_loop)
-        };
+    let mut painter = pollster::block_on(bufro::Painter::new_from_window(&window, (500, 500)));
+    let font = bufro::Font::new(include_bytes!("FiraMono-Regular.ttf")).unwrap();
 
-        {
-            use glutin::event::{Event, WindowEvent};
-            use glutin::event_loop::ControlFlow;
-
-            // animation variables
-            let mut r1 = 0.;
-            let mut r2 = 0.;
-            let mut scale_animation = 0.;
-
-            let mut width = 800;
-            let mut height = 600;
-
-            event_loop.run(move |event, _, control_flow| {
-                *control_flow = ControlFlow::Wait;
+    event_loop.run(move |event, _, control_flow| {
+        match event {
+            Event::WindowEvent {
+                ref event,
+                window_id,
+            } if window_id == window.id() => {
                 match event {
-                    Event::LoopDestroyed => {
-                        return;
-                    }
-                    Event::MainEventsCleared => {
-                        window.window().request_redraw();
-                    }
-                    Event::RedrawRequested(_) => {
-                        scale_animation += 0.02;
-                        ctx.scale(
-                            (scale_animation as f32).sin() / 4. + 1.,
-                            (scale_animation as f32).sin() / 4. + 1.,
-                        );
-
-                        // draw frame
-                        ctx.translate((width / 2) as f32, (height / 2) as f32);
-                        ctx.rotate(r1);
-                        ctx.rect(-50., -50., 100., 100., 0., Color::from_8(220, 220, 40, 255));
-                        ctx.rotate(r2 - r1);
-                        ctx.translate(200., 0.);
-                        ctx.circle(0., 0., 50., Color::from_8(30, 90, 200, 255));
-
-                        // update animation variables
-                        r1 += 0.05;
-                        r2 += -0.075;
-
-                        // flush
-                        ctx.flush();
-                        window.swap_buffers().unwrap();
-                    }
-                    Event::WindowEvent { ref event, .. } => match event {
-                        WindowEvent::Resized(physical_size) => {
-                            ctx.resize(physical_size.width as i32, physical_size.height as i32);
-                            window.resize(*physical_size);
-                            width = physical_size.width;
-                            height = physical_size.height;
-                        }
-                        WindowEvent::CloseRequested => {
-                            ctx.clean();
-                            *control_flow = ControlFlow::Exit
-                        }
-                        _ => (),
+                    WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
+                    WindowEvent::KeyboardInput {
+                        input:
+                            winit::event::KeyboardInput {
+                                virtual_keycode: Some(keycode),
+                                ..
+                            },
+                        ..
+                    } => match keycode {
+                        VirtualKeyCode::Escape => *control_flow = ControlFlow::Exit,
+                        VirtualKeyCode::Space => {}
+                        _ => {}
                     },
-                    _ => (),
+                    WindowEvent::Resized(physical_size) => {
+                        painter.resize((physical_size.width, physical_size.height));
+                    }
+                    WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
+                        // new_inner_size is &mut so w have to dereference it twice
+                        painter.resize((new_inner_size.width, new_inner_size.height));
+                    }
+                    _ => {}
                 }
-            });
+            }
+            Event::RedrawRequested(_) => {
+                let size = window.inner_size();
+                painter.rectangle(
+                    0.,
+                    0.,
+                    size.width as f32,
+                    size.height as f32,
+                    Color::from_f(0.2, 0.2, 0.2, 1.0),
+                );
+                
+                painter.rectangle(0.0, 0.0, 100.0, 100.0, Color::from_f(1.0, 0.0, 0.0, 1.0));
+                painter.fill_text(&font, "Hello, World!", 500.0, 500.0, 15.5, Color::from_8(0xFF, 0xFF, 0xFF, 0xFF), None);
+
+                match painter.flush() {
+                    Ok(_) => {}
+                    // Recreate the swap_chain if lost
+                    Err(bufro::SurfaceError::Lost) => {
+                        painter.clear();
+                        painter.regen()
+                    }
+                    // The system is out of memory, we should probably quit
+                    Err(bufro::SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
+                    // All other errors (Outdated, Timeout) should be resolved by the next frame
+                    Err(e) => {
+                        painter.clear();
+                        eprintln!("{:?}", e)
+                    }
+                }
+            }
+            Event::MainEventsCleared => {
+                // RedrawRequested will only trigger once, unless we manually
+                // request it.
+                window.request_redraw();
+            }
+            _ => {}
         }
-    }
+    });
 }

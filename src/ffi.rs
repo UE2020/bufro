@@ -36,10 +36,12 @@ pub unsafe extern "C" fn bfr_painter_from_xlib_window(
     handle: BufroXlibWindow,
     width: u32,
     height: u32,
+    backend: u32,
 ) -> *mut Painter {
     let painter = Box::new(pollster::block_on(Painter::new_from_window(
         &handle,
         (width, height),
+        Backends::from_bits(backend).unwrap(),
     )));
     Box::into_raw(painter)
 }
