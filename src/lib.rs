@@ -1135,8 +1135,43 @@ impl Painter {
         self.stroke_path(&path.build(), color, options);
     }
 
-    pub fn measure_text(font: &Font, text: &str, wrap_limit: Option<usize>) {
-        
+    // measure the width of the given text
+    pub fn measure_text(font: &Font, text: &str, size: f32, wrap_limit: Option<usize>) -> f32 {
+        match wrap_limit {
+            Some(limit) => assert_ne!(limit, 0),
+            None => (),
+        }
+        let face = font.font.as_face_ref();
+        let default_scale = (face.units_per_em().unwrap() as f32).recip();
+        let bbox = face.global_bounding_box();
+        let line_height = (bbox.y_min + bbox.y_max) as f32;
+        let line_height = line_height * 1.2;
+        let glyph_width = (bbox.x_min + bbox.x_max) as f32;
+        let mut measurements = vec![OrderedFloat(0.0)];
+        let scale = default_scale * size;
+        let mut offset = 0.;
+        for (i, character) in text.chars().enumerate() {
+            if character == '\n' {
+                measurements.push(OrderedFloat(0.0));
+                offset = 0.;
+                continue;
+            }
+            let glyph = face.as_face_ref().glyph_index(character).unwrap();
+            let advance = face.glyph_hor_advance(glyph).unwrap() as f32;
+            offset += advance;
+            *measurements.last_mut().unwrap() += advance;
+            match wrap_limit {
+                Some(limit) => {
+                    if offset > glyph_width * limit as f32 && character == ' ' {
+                        measurements.push(OrderedFloat(0.0));
+                        offset = 0.;
+                    }
+                }
+                None => (),
+            }
+        }
+
+        measurements.iter().max().unwrap().into_inner() * scale
     }
 
     /// Resize the canvas.

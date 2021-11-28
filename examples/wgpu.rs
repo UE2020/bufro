@@ -17,8 +17,8 @@ fn main() {
         .unwrap();
 
     // Since main can't be async, we're going to need to block
-    let mut painter = pollster::block_on(bufro::Painter::new_from_window(&window, (500, 500)));
-    let font = bufro::Font::new(include_bytes!("FiraMono-Regular.ttf")).unwrap();
+    let mut painter = pollster::block_on(bufro::Painter::new_from_window(&window, (500, 500), bufro::Backends::all()));
+    let font = bufro::Font::new(include_bytes!("Roboto-Regular.ttf")).unwrap();
     let mut cursor_position = cgmath::vec2(0.0, 0.0);
     let mut mouse_down = false;
 
