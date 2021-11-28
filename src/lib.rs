@@ -516,6 +516,7 @@ enum PathInstruction {
     QuadTo(HashablePoint, HashablePoint),
     CurveTo(HashablePoint, HashablePoint, HashablePoint),
     Circle(HashablePoint, OrderedFloat<f32>),
+    Rectangle(HashablePoint, OrderedFloat<f32>, OrderedFloat<f32>),
 }
 
 #[derive(Clone)]
@@ -645,6 +646,25 @@ impl PathBuilder {
         self.path_instructions.push(PathInstruction::Circle(
             HashablePoint::new(x, y),
             OrderedFloat(radius),
+        ));
+    }
+
+    // add a rectangle to the path
+    pub fn rectangle(&mut self, x: f32, y: f32, width: f32, height: f32) {
+        use lyon::path::builder::PathBuilder;
+        let (x, y) = {
+            let point = cgmath::point3(x, y, 0.);
+            let point = self.transform.transform_point(point);
+            (point.x, point.y)
+        };
+        self.path.add_rectangle(
+            &lyon::math::rect(x, y, width, height),
+            lyon::path::Winding::Positive,
+        );
+        self.path_instructions.push(PathInstruction::Rectangle(
+            HashablePoint::new(x, y),
+            OrderedFloat(width),
+            OrderedFloat(height),
         ));
     }
 
