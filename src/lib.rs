@@ -515,6 +515,7 @@ enum PathInstruction {
     LineTo(HashablePoint),
     QuadTo(HashablePoint, HashablePoint),
     CurveTo(HashablePoint, HashablePoint, HashablePoint),
+    Circle(HashablePoint, OrderedFloat<f32>),
 }
 
 #[derive(Clone)]
@@ -629,6 +630,21 @@ impl PathBuilder {
         self.path_instructions.push(PathInstruction::QuadTo(
             HashablePoint::new(x1, y1),
             HashablePoint::new(x, y),
+        ));
+    }
+
+    // add a circle to the path
+    pub fn circle(&mut self, x: f32, y: f32, radius: f32) {
+        use lyon::path::builder::PathBuilder;
+        let (x, y) = {
+            let point = cgmath::point3(x, y, 0.);
+            let point = self.transform.transform_point(point);
+            (point.x, point.y)
+        };
+        self.path.add_circle(lyon::math::point(x, y), radius, lyon::path::Winding::Positive);
+        self.path_instructions.push(PathInstruction::Circle(
+            HashablePoint::new(x, y),
+            OrderedFloat(radius),
         ));
     }
 
