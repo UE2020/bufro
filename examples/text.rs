@@ -63,10 +63,10 @@ fn main() {
                 // 2F2C30
                 painter.stroke_text(
                     &font,
-                    "Bufro text rendering example",
-                    10.0,
-                    10.0,
+                    "TEXT RENDERING EXAMPLE - text rendering example - !@#$%^&*()?",
                     20.0,
+                    20.0,
+                    30.0,
                     Color::from_8(0x2F, 0x2C, 0x30, 0xFF),
                     bufro::StrokeOptions::default()
                         .with_line_width(5.)
@@ -75,10 +75,10 @@ fn main() {
                 );
                 painter.fill_text(
                     &font,
-                    "Bufro text rendering example",
-                    10.0,
-                    10.0,
+                    "TEXT RENDERING EXAMPLE - text rendering example - !@#$%^&*()?",
                     20.0,
+                    20.0,
+                    30.0,
                     Color::from_8(0xFF, 0xFF, 0xFF, 0xFF),
                     None,
                 );

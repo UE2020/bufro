@@ -16,8 +16,8 @@ pub mod ffi;
 
 pub use lyon::tessellation::FillOptions;
 
-pub use wgpu::SurfaceError;
 pub use wgpu::Backends;
+pub use wgpu::SurfaceError;
 
 #[derive(Copy, Clone, Debug, PartialEq, Hash, Eq)]
 #[repr(C)]
@@ -642,7 +642,11 @@ impl PathBuilder {
             let point = self.transform.transform_point(point);
             (point.x, point.y)
         };
-        self.path.add_circle(lyon::math::point(x, y), radius, lyon::path::Winding::Positive);
+        self.path.add_circle(
+            lyon::math::point(x, y),
+            radius,
+            lyon::path::Winding::Positive,
+        );
         self.path_instructions.push(PathInstruction::Circle(
             HashablePoint::new(x, y),
             OrderedFloat(radius),

@@ -55,9 +55,17 @@ fn main() {
                     size.height as f32,
                     Color::from_f(0.2, 0.2, 0.2, 1.0),
                 );
-                
+
                 painter.rectangle(0.0, 0.0, 100.0, 100.0, Color::from_f(1.0, 0.0, 0.0, 1.0));
-                painter.fill_text(&font, "Hello, World!", 500.0, 500.0, 15.5, Color::from_8(0xFF, 0xFF, 0xFF, 0xFF), None);
+                painter.fill_text(
+                    &font,
+                    "Hello, World!",
+                    500.0,
+                    500.0,
+                    15.5,
+                    Color::from_8(0xFF, 0xFF, 0xFF, 0xFF),
+                    None,
+                );
 
                 match painter.flush() {
                     Ok(_) => {}

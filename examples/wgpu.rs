@@ -17,7 +17,11 @@ fn main() {
         .unwrap();
 
     // Since main can't be async, we're going to need to block
-    let mut painter = pollster::block_on(bufro::Painter::new_from_window(&window, (500, 500), bufro::Backends::all()));
+    let mut painter = pollster::block_on(bufro::Painter::new_from_window(
+        &window,
+        (500, 500),
+        bufro::Backends::all(),
+    ));
     let font = bufro::Font::new(include_bytes!("Roboto-Regular.ttf")).unwrap();
     let mut cursor_position = cgmath::vec2(0.0, 0.0);
     let mut mouse_down = false;
@@ -30,7 +34,7 @@ fn main() {
 
     let mut frame = 0;
 
-    let mut circles = std::collections::HashMap::new();
+    //let mut circles = std::collections::HashMap::new();
 
     let mut rng = rand::thread_rng();
 
@@ -174,7 +178,7 @@ fn main() {
 
                 painter.restore();
 
-                if circles.len() < 10000 {
+                /*if circles.len() < 10000 {
                     circles.insert(
                         frame,
                         (
@@ -193,7 +197,7 @@ fn main() {
                     painter.circle(0.0, 0.0, circle.2, Color::from_8(214, 73, 5, 255));
                     painter.restore();
                 }
-                println!("Elapsed: {:?}", time_start.elapsed());
+                println!("Elapsed: {:?}", time_start.elapsed());*/
 
                 painter.circle(
                     0.,
